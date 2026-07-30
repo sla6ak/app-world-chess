@@ -59,5 +59,6 @@ export const {
 } = roomSlice.actions;
 
 export const roomReducer = roomSlice.reducer;
+export { roomSlice };
 
 export default roomSlice.reducer;
