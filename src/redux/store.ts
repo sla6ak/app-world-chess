@@ -1,4 +1,5 @@
-import { configureStore, combineReducers, useDispatch } from "@reduxjs/toolkit";
+import { configureStore, combineReducers } from "@reduxjs/toolkit";
+import { useDispatch } from "react-redux";
 import storage from "redux-persist/lib/storage";
 import { authApi } from "./authAPI";
 import { curentToken } from "./sliceToken";
