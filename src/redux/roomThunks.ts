@@ -11,15 +11,7 @@ export const connectToRoom = createAsyncThunk<
     "room/connect",
     async ({ token, color }, { rejectWithValue }) => {
         try {
-            let room: Room;
-
-            if (roomId) {
-                // Переподключение к существующей комнате по reconnectionToken
-                room = await client.reconnect(token);
-            } else {
-                // Создание или поиск комнаты
-                room = await client.joinOrCreate("chess_room", { token, color });
-            }
+            const room = await client.joinOrCreate("chess_room", { token, color });
 
             return { roomId: room.roomId, room };
         } catch (error: any) {
