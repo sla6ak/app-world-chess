@@ -1,10 +1,9 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import client from "../colyseus/client";
-import type { Room } from "colyseus.js";
-import { RootState } from "./store";
+import { setRoom, getRoom } from "../colyseus/roomManager";
 
 export const connectToRoom = createAsyncThunk<
-    { roomId: string; room: Room },
+    { roomId: string },
     { token: string; color: string },
     { state: RootState }
 >(
@@ -12,8 +11,8 @@ export const connectToRoom = createAsyncThunk<
     async ({ token, color }, { rejectWithValue }) => {
         try {
             const room = await client.joinOrCreate("chess_room", { token, color });
-
-            return { roomId: room.roomId, room };
+            setRoom(room);
+            return { roomId: room.roomId };
         } catch (error: any) {
             return rejectWithValue(error.message || "Failed to connect to room");
         }
@@ -23,10 +22,14 @@ export const connectToRoom = createAsyncThunk<
 export const sendRoomMessage = createAsyncThunk(
     "room/sendMessage",
     async (
-        { room, message }: { room: Room; message: any },
+        message: any,
         { rejectWithValue }
     ) => {
         try {
+            const room = getRoom();
+            if (!room) {
+                return rejectWithValue("Room is not connected");
+            }
             room.send(message);
             return { success: true };
         } catch (error: any) {
@@ -37,9 +40,13 @@ export const sendRoomMessage = createAsyncThunk(
 
 export const leaveRoom = createAsyncThunk(
     "room/leave",
-    async (room: Room, { rejectWithValue }) => {
+    async (_, { rejectWithValue }) => {
         try {
-            await room.leave();
+            const room = getRoom();
+            if (room) {
+                await room.leave();
+                setRoom(null);
+            }
             return { success: true };
         } catch (error: any) {
             return rejectWithValue(error.message || "Failed to leave room");

@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 import { sendRoomMessage } from "@redux/roomThunks";
 import { useAppDispatch } from "@redux/store";
+import { getRoom } from "@colyseus/roomManager";
 import type { RootState } from "@redux/store";
 import Modal from "../modal/Modal";
 import ModalFindGame from "../modalFindGame/ModalFindGame";
@@ -15,7 +16,6 @@ const GameMenu: React.FC<PropTypes> = () => {
     const color = useSelector((state: RootState) => state.colorGame);
     const token = useSelector((state: RootState) => state.token);
     const connected = useSelector((state: RootState) => state.room.connected);
-    const room = useSelector((state: RootState) => state.room.room);
     const dispatch = useAppDispatch();
     const [typeGame, setTypeGame] = useState("standart");
 
@@ -24,6 +24,7 @@ const GameMenu: React.FC<PropTypes> = () => {
     };
 
     const handleClickSendMessage = async (timeControl: number, timePluse: number) => {
+        const room = getRoom();
         if (!room) {
             toast.error("Room is not connected");
             return;
@@ -32,15 +33,12 @@ const GameMenu: React.FC<PropTypes> = () => {
         try {
             await dispatch(
                 sendRoomMessage({
-                    room,
-                    message: {
-                        event: "startGame",
-                        timeControl,
-                        timePluse,
-                        typeGame,
-                        token,
-                        color,
-                    },
+                    event: "startGame",
+                    timeControl,
+                    timePluse,
+                    typeGame,
+                    token,
+                    color,
                 })
             ).unwrap();
             toast.info(`Finding game ${timeControl} + ${timePluse} min, wite please...`);

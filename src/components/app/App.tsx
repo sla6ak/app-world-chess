@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useIsActivTokenQuery } from "@redux/authAPI";
 import { isUserName } from "@redux/sliceUserName";
 import { connectToRoom } from "@redux/roomThunks";
 import { roomSlice } from "@redux/sliceRoom";
+import { getRoom } from "@colyseus/roomManager";
 import Layout from "@layouts/Layout";
 import { applyTheme } from "@helpers/theme";
 import { toast } from "react-toastify";
@@ -49,7 +50,7 @@ function App() {
                 .unwrap()
                 .then((result) => {
                     dispatch(roomSlice.actions.connectRoomSuccess(result));
-                    roomRef.current = result.room;
+                    roomRef.current = getRoom();
                     toast.success(`Connected to room ${result.roomId}`);
                 })
                 .catch((err) => {
@@ -60,9 +61,8 @@ function App() {
 
     // Подписка на сообщения комнаты
     useEffect(() => {
-        if (!roomRef.current) return;
-
-        const room = roomRef.current;
+        const room = roomRef.current || getRoom();
+        if (!room) return;
 
         const handleGameMessage = (message: any) => {
             console.log("game message:", message);

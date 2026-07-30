@@ -1,12 +1,10 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import type { Room } from "colyseus.js";
 
 interface RoomState {
     roomId: string | null;
     connected: boolean;
     connecting: boolean;
     error: string | null;
-    room: Room | null;
 }
 
 const initialState: RoomState = {
@@ -14,7 +12,6 @@ const initialState: RoomState = {
     connected: false,
     connecting: false,
     error: null,
-    room: null,
 };
 
 const roomSlice = createSlice({
@@ -25,11 +22,10 @@ const roomSlice = createSlice({
             state.connecting = true;
             state.error = null;
         },
-        connectRoomSuccess(state, action: PayloadAction<{ roomId: string; room: Room }>) {
+        connectRoomSuccess(state, action: PayloadAction<{ roomId: string }>) {
             state.connecting = false;
             state.connected = true;
             state.roomId = action.payload.roomId;
-            state.room = action.payload.room;
             state.error = null;
         },
         connectRoomFailure(state, action: PayloadAction<string>) {
