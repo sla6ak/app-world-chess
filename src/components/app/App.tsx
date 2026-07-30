@@ -5,7 +5,7 @@ import { useIsActivTokenQuery } from "@redux/authAPI";
 import { isUserName } from "@redux/sliceUserName";
 import { connectToRoom } from "@redux/roomThunks";
 import { roomSlice } from "@redux/sliceRoom";
-import { getRoom } from "../colyseus/roomManager";
+import { getRoom } from "../../colyseus/roomManager";
 import Layout from "@layouts/Layout";
 import { applyTheme } from "@helpers/theme";
 import { toast } from "react-toastify";

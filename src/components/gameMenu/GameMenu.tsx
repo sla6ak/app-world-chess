@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 import { sendRoomMessage } from "@redux/roomThunks";
 import { useAppDispatch } from "@redux/store";
-import { getRoom } from "../colyseus/roomManager";
+import { getRoom } from "../../colyseus/roomManager";
 import type { RootState } from "@redux/store";
 import Modal from "../modal/Modal";
 import ModalFindGame from "../modalFindGame/ModalFindGame";
