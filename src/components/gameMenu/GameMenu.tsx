@@ -1,23 +1,22 @@
 import React, { useState } from "react";
-import { ReadyState } from "react-use-websocket";
 import { toast } from "react-toastify";
-import { useSelector } from "react-redux";
-import { reqWsStartGame } from "../../helpers/requestWs";
+import { useSelector, useDispatch } from "react-redux";
+import { sendRoomMessage } from "@redux/roomThunks";
+import type { RootState } from "@redux/store";
 import Modal from "../modal/Modal";
 import ModalFindGame from "../modalFindGame/ModalFindGame";
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-type PropTypes = {
-    connect: { sendMessage: any; readyState: any; lastMessage: any };
-};
+type PropTypes = {};
 
-const GameMenu: React.FC<PropTypes> = ({ connect }) => {
+const GameMenu: React.FC<PropTypes> = () => {
     const [modal, setModal] = useState(false);
-    const idWs = useSelector((state: any) => state.idWs);
-    const color = useSelector((state: any) => state.colorGame);
-    const token = useSelector((state: any) => state.token);
+    const color = useSelector((state: RootState) => state.colorGame);
+    const token = useSelector((state: RootState) => state.token);
+    const connected = useSelector((state: RootState) => state.room.connected);
+    const room = useSelector((state: RootState) => state.room.room);
+    const dispatch = useDispatch();
     const [typeGame, setTypeGame] = useState("standart");
-    const { sendMessage, readyState } = connect;
 
     const gameRegim = () => {
         setTypeGame((prev) => (prev === "standart" ? "fisher" : "standart"));
@@ -26,7 +25,19 @@ const GameMenu: React.FC<PropTypes> = ({ connect }) => {
     const handleClickSendMessage = async (timeControl: number, timePluse: number) => {
         setModal(true);
         try {
-            sendMessage(JSON.stringify(reqWsStartGame(timeControl, timePluse, typeGame, token, color, idWs)));
+            await dispatch(
+                sendRoomMessage({
+                    room,
+                    message: {
+                        event: "startGame",
+                        timeControl,
+                        timePluse,
+                        typeGame,
+                        token,
+                        color,
+                    },
+                })
+            ).unwrap();
             toast.info(`Finding game ${timeControl} + ${timePluse} min, wite please...`);
         } catch (error) {
             toast.error("error");
@@ -80,7 +91,7 @@ const GameMenu: React.FC<PropTypes> = ({ connect }) => {
                         <button
                             key={`${tc}-${tp}`}
                             onClick={() => handleClickSendMessage(tc, tp)}
-                            disabled={readyState !== ReadyState.OPEN}
+                            disabled={!connected}
                             className="group relative flex flex-col items-center justify-center w-full rounded-xl font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(102,53,23,0.35)] active:translate-y-0.5 active:shadow-[0_2px_6px_rgba(102,53,23,0.2)] disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent overflow-hidden"
                             style={{
                                 backgroundColor: "rgba(102, 53, 23, 0.85)",

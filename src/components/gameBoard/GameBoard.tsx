@@ -2,12 +2,7 @@ import React, { useEffect, useState } from "react";
 import HelperBoard from "@components/helperBoard/HelperBoard";
 import showFigure from "@helpers/showFigure";
 
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-type PropTypes = {
-    connect: { sendMessage: any; readyState: any; lastMessage: any };
-};
-
-const GameBoard: React.FC<PropTypes> = ({ connect }) => {
+const GameBoard: React.FC = () => {
     const [board, setBoard] = useState([{ _id: 1, figure: "" }]);
     const [activFigure, setActivFigure] = useState({ _id: 1, figure: "" });
     const startPosition = "rnbqkbnrpppppppp88888888888888888888888888888888PPPPPPPPRNBQKBNR";
