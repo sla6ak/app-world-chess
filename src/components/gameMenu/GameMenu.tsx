@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-import { useSelector, useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { sendRoomMessage } from "@redux/roomThunks";
+import { useAppDispatch } from "@redux/store";
 import type { RootState } from "@redux/store";
 import Modal from "../modal/Modal";
 import ModalFindGame from "../modalFindGame/ModalFindGame";
@@ -15,7 +16,7 @@ const GameMenu: React.FC<PropTypes> = () => {
     const token = useSelector((state: RootState) => state.token);
     const connected = useSelector((state: RootState) => state.room.connected);
     const room = useSelector((state: RootState) => state.room.room);
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
     const [typeGame, setTypeGame] = useState("standart");
 
     const gameRegim = () => {
@@ -23,6 +24,10 @@ const GameMenu: React.FC<PropTypes> = () => {
     };
 
     const handleClickSendMessage = async (timeControl: number, timePluse: number) => {
+        if (!room) {
+            toast.error("Room is not connected");
+            return;
+        }
         setModal(true);
         try {
             await dispatch(
