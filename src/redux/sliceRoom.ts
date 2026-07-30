@@ -37,7 +37,6 @@ const roomSlice = createSlice({
             state.roomId = null;
             state.connected = false;
             state.connecting = false;
-            state.room = null;
             state.error = null;
         },
         setRoomError(state, action: PayloadAction<string>) {

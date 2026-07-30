@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import client from "../colyseus/client";
 import { setRoom, getRoom } from "../colyseus/roomManager";
+import type { RootState } from "./store";
 
 export const connectToRoom = createAsyncThunk<
     { roomId: string },
