@@ -58,4 +58,6 @@ export const {
     setRoomError,
 } = roomSlice.actions;
 
+export const roomReducer = roomSlice.reducer;
+
 export default roomSlice.reducer;
