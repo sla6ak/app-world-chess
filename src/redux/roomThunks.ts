@@ -5,23 +5,23 @@ import { RootState } from "./store";
 
 export const connectToRoom = createAsyncThunk<
     { roomId: string; room: Room },
-    { roomId?: string; token: string; color: string },
+    { token: string; color: string },
     { state: RootState }
 >(
     "room/connect",
-    async ({ roomId, token, color }, { rejectWithValue }) => {
+    async ({ token, color }, { rejectWithValue }) => {
         try {
             let room: Room;
 
             if (roomId) {
-                // Подключение к существующей комнате (переподключение)
-                room = await client.reconnect(roomId, { token, color });
+                // Переподключение к существующей комнате по reconnectionToken
+                room = await client.reconnect(token);
             } else {
                 // Создание или поиск комнаты
-                room = await client.createOrJoin("chess_room", { token, color });
+                room = await client.joinOrCreate("chess_room", { token, color });
             }
 
-            return { roomId: room.id, room };
+            return { roomId: room.roomId, room };
         } catch (error: any) {
             return rejectWithValue(error.message || "Failed to connect to room");
         }
