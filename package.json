@@ -9,6 +9,7 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.7",
     "ajv": "^8.17.1",
+    "colyseus.js": "^0.16.22",
     "formik": "^2.4.9",
     "modern-normalize": "^3.0.1",
     "react": "^18.3.1",
