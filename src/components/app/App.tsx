@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useIsActivTokenQuery } from "@redux/authAPI";
 import { isUserName } from "@redux/sliceUserName";
-import { newWsID } from "@redux/sliceWsID";
-import useWebSocket, { ReadyState } from "react-use-websocket";
+import { connectToRoom } from "@redux/roomThunks";
+import { roomSlice } from "@redux/sliceRoom";
 import Layout from "@layouts/Layout";
 import { applyTheme } from "@helpers/theme";
 import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import PrivateRoute from "@components/privateRoute/PrivateRoute";
 import PublicRoute from "@components/publicRoute/PublicRoute";
 import Statistics from "@components/statistics/Statistics";
 import HomeTab from "@components/homeTab/HomeTab";
 import GameBoard from "@components/gameBoard/GameBoard";
-import { reqWsStartApp } from "@helpers/requestWs";
-import { socketUrl } from "@redux/testURL";
+import type { RootState, AppDispatch } from "@redux/store";
 
 const LoginPage = React.lazy(() => import("@views/loginPage/LoginPage"));
 const RegisterPage = React.lazy(() => import("@views/registerPage/RegisterPage"));
@@ -22,21 +22,14 @@ const DashboardPage = React.lazy(() => import("@views/dashboardPage/DashboardPag
 
 function App() {
     const [curentG, setCurentG] = useState(false);
-    const color = useSelector((state: any) => state.colorGame);
-    const token = useSelector((state: any) => state.token);
-    const userName: string = useSelector((state: any) => state.userName);
-    const currentTheme: string = useSelector((state: any) => state.theme);
-    const dispatch = useDispatch();
+    const color = useSelector((state: RootState) => state.colorGame);
+    const token = useSelector((state: RootState) => state.token);
+    const userName: string = useSelector((state: RootState) => state.userName);
+    const currentTheme: string = useSelector((state: RootState) => state.theme);
+    const roomId = useSelector((state: RootState) => state.room.roomId);
+    const dispatch = useDispatch<AppDispatch>();
     const { data: auth } = useIsActivTokenQuery("", { skip: !token });
-    const { sendMessage, lastMessage, readyState } = useWebSocket(socketUrl);
-
-    const connectionStatus = {
-        [ReadyState.CONNECTING]: "Connecting",
-        [ReadyState.OPEN]: "Open",
-        [ReadyState.CLOSING]: "Closing",
-        [ReadyState.CLOSED]: "Closed",
-        [ReadyState.UNINSTANTIATED]: "Uninstantiated",
-    }[readyState];
+    const roomRef = useRef<any>(null);
 
     useEffect(() => {
         if (auth === undefined) {
@@ -49,26 +42,39 @@ function App() {
         applyTheme(currentTheme);
     }, [currentTheme]);
 
+    // Автоподключение к Colyseus комнате при логине
     useEffect(() => {
-        if (userName.length > 1) {
-            if (lastMessage !== null) {
-                const data = JSON.parse(lastMessage.data);
-                const { mesRes } = data;
-                console.log("last WS message:", mesRes);
-                if (mesRes.message === "ws connect") {
-                    dispatch(newWsID(mesRes.idWs));
-                    sendMessage(JSON.stringify(reqWsStartApp(mesRes.idWs, token, color)));
-                    return;
-                }
-                if (mesRes.message === "game") {
-                    setCurentG(true);
-                    toast.info(`We find curent game!${mesRes.idGame}`);
-                    return;
-                }
-                console.log("no find curent game...");
-            }
+        if (userName.length > 1 && token && !roomId) {
+            dispatch(connectToRoom({ token, color }))
+                .unwrap()
+                .then((result) => {
+                    dispatch(roomSlice.actions.connectRoomSuccess(result));
+                    roomRef.current = result.room;
+                    toast.success(`Connected to room ${result.roomId}`);
+                })
+                .catch((err) => {
+                    dispatch(roomSlice.actions.connectRoomFailure(err || "Failed to connect"));
+                });
         }
-    }, [dispatch, lastMessage, sendMessage, token, userName, setCurentG, color]);
+    }, [userName, token, roomId, dispatch, color]);
+
+    // Подписка на сообщения комнаты
+    useEffect(() => {
+        if (!roomRef.current) return;
+
+        const room = roomRef.current;
+
+        const handleGameMessage = (message: any) => {
+            console.log("game message:", message);
+            setCurentG(true);
+        };
+
+        room.onMessage("game", handleGameMessage);
+
+        return () => {
+            room.offMessage("game", handleGameMessage);
+        };
+    }, [roomId]);
 
     return (
         <BrowserRouter basename={process.env.PUBLIC_URL + "/"}>
@@ -86,7 +92,7 @@ function App() {
                             path="/home"
                             element={
                                 <PrivateRoute>
-                                    <HomeTab connect={{ sendMessage, readyState, lastMessage }} />
+                                    <HomeTab />
                                 </PrivateRoute>
                             }
                         />
@@ -102,7 +108,7 @@ function App() {
                             path="/game"
                             element={
                                 <PrivateRoute>
-                                    <GameBoard connect={{ sendMessage, readyState, lastMessage }} />
+                                    <GameBoard />
                                 </PrivateRoute>
                             }
                         />
