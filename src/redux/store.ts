@@ -5,12 +5,13 @@ import { curentToken } from "./sliceToken";
 import { curentWsID } from "./sliceWsID";
 import { colorGame } from "./sliceColor";
 import { curentUser } from "./sliceUserName";
+import { themeSlice } from "./sliceTheme";
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from "redux-persist";
 
 const tokenPersistConfig = {
     key: "chessWorld",
     storage,
-    whitelist: ["token", "colorGame"],
+    whitelist: ["token", "colorGame", "theme"],
 };
 
 const rootReduser = combineReducers({
@@ -19,6 +20,7 @@ const rootReduser = combineReducers({
     userName: curentUser.reducer,
     colorGame: colorGame.reducer,
     WsID: curentWsID.reducer,
+    theme: themeSlice.reducer,
 });
 
 const persistedReducer = persistReducer(tokenPersistConfig, rootReduser);
@@ -34,3 +36,5 @@ export const store = configureStore({
 });
 
 export const persistor = persistStore(store);
+
+export type RootState = ReturnType<typeof store.getState>;

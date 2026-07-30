@@ -12,7 +12,7 @@ import pinB from "../images/Chess_tile_pd.svg.png";
 import pinW from "../images/Chess_tile_pl.svg.png";
 
 const showFigure = (cord: number, figure: string) => {
-    let fig = "";
+    const fig = "";
     if (figure === "N") {
         return nitW;
     }

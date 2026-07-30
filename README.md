@@ -1,21 +1,72 @@
-# React App
+# Chess-World — React Chess Application
 
-логика приложения :
+## Theming System
 
-приложение синглПедж внутри апп авторизуем пользователя
-далее имеем лейаут в котором рендерим роуты
-в лейауте необходимо реализовать меню настроек таких как смена языка, темы доски, подсказок возможных ходов фигурами, иконок самих фигур
+The project uses a CSS custom properties (CSS Variables) theming system with support for multiple themes.
 
-1. есть линк на домашнюю страницу где мы можем выбрать режим игры и тайминг
-2. есть линк на страницу статистики где мы должны увидеть нашу статистику текущее положение в общем рейтинге и рейтинг топ игроков
-3. есть линк на игровое поле где стартует доска
+### Available Themes
 
-требования :
+| Theme Class            | Description              |
+| ---------------------- | ------------------------ |
+| `theme-light`          | Warm light (default)     |
+| `theme-dark`           | Dark mode                |
+| `theme-chess-classic`  | Classic chess warm tones |
+| `theme-ocean`          | Cool blue ocean theme    |
 
-1. авторизовываем юзера именно в апп
-2. при загрузке приложения нас перенаправляет на домашнюю страницу выбора новой игры но если вдруг в базе найдена неоконченая партия нас перенаправит на линк доски
-3. в компоненте апп мы должны подключаться к вебсокет соединению для того чтоб соединение не обрывалось и не переподключалось при попадании в другое линки а было стабильно
-4. если апп будет перегружен логикой вынести часть логики в обертку для апп
-5. в апп при подключении к вебсокету мы проверяем идет ли у пользователя партия в данный момент и если да то всегда перенаправляем его с домашнего линка на линк доски
-6. в компоненте доски реализованы правила игры для начала базовые типа очередность ходов
-7. в перспективе всетаки реализовть возможность ходов как касанием фигуры так и ее перетаскиванием
+### How to Switch Themes
+
+Themes are applied by adding a class to the `<html>` element:
+
+```html
+<html lang="en" class="theme-dark">
+```
+
+Or programmatically via the `ThemeSwitcher` component (included in the app bar).
+
+### CSS Variable Reference
+
+All theme colors are defined in `src/styles/themes.css` as CSS custom properties:
+
+| Variable                    | Description              |
+| --------------------------- | ------------------------ |
+| `--color-bg-primary`        | Page background          |
+| `--color-bg-secondary`      | Cards, modals, inputs    |
+| `--color-bg-surface`        | Sidebar/app bar bg       |
+| `--color-text-primary`      | Main text color          |
+| `--color-text-secondary`    | Muted/helper text        |
+| `--color-accent`            | Primary brand color      |
+| `--color-accent-hover`      | Accent hover state       |
+| `--color-bg-board`          | Chess board light square |
+| `--color-bg-board-dark`     | Chess board dark square  |
+| `--color-green`             | Success/green accent     |
+| `--color-error`             | Error color              |
+| `--color-border`            | Border color             |
+| `--color-shadow`            | Default shadow           |
+
+### Adding a New Theme
+
+1. Add a new theme block in `src/styles/themes.css`
+2. Add the theme class to the `THEMES` array in `src/helpers/theme.ts`
+3. Add a theme option in `ThemeSwitcher` component
+4. Add the class to `index.html` as a default if desired
+
+### Tailwind CSS Integration
+
+The Tailwind config (`tailwind.config.js`) maps its color tokens to CSS variables, so all Tailwind utilities automatically respond to theme changes.
+
+---
+
+## Application Logic
+
+- Single-page application with React Router
+- User authentication via Redux + WebSocket
+- Layout with navigation and user menu
+- Game board with interactive chess pieces
+- Statistics page
+- Multiple time control options for games
+
+### Pages:
+
+1. **Home** — choose game mode and time control
+2. **Statistics** — player stats, rating, wins/losses
+3. **Game** — interactive chess board

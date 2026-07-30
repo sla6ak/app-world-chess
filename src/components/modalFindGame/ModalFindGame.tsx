@@ -1,22 +1,27 @@
 import React from "react";
-import { ButtonWrapper, ModalTitle, Container, TitleAccent } from "./ModalFindGame.styled";
-import { GeneralButton } from "components/generalButton/GeneralButton.styled";
+import GeneralButton from "@components/generalButton/GeneralButton";
 import { SpinnerDotted } from "spinners-react";
 
 const ModalFindGame = ({ onModalClose }: any) => {
     return (
-        <Container>
-            <ModalTitle>
-                <TitleAccent>Game search</TitleAccent>
-                <SpinnerDotted size={50} thickness={100} speed={100} color="rgba(36, 204, 167, 1)" />
+        <div className="text-center">
+            <h3 className="text-xl font-bold mb-3" style={{ color: "var(--color-text-primary)" }}>
+                Game search
+            </h3>
+            <div className="flex justify-center my-4">
+                <SpinnerDotted size={48} thickness={100} speed={100} color="var(--color-green)" />
+            </div>
+            <p className="text-sm mb-6" style={{ color: "var(--color-text-secondary)" }}>
                 Are you sure you want to cancel game search?
-            </ModalTitle>
-            <ButtonWrapper>
-                <GeneralButton fullWidth variant={"contained"} bts={"submit"} onClick={onModalClose} type="submit">
-                    Yes
-                </GeneralButton>
-            </ButtonWrapper>
-        </Container>
+            </p>
+            <div className="flex justify-center">
+                <div className="w-full sm:w-[200px]">
+                    <GeneralButton bts={"submit"} onClick={onModalClose} type="submit">
+                        Yes
+                    </GeneralButton>
+                </div>
+            </div>
+        </div>
     );
 };
 

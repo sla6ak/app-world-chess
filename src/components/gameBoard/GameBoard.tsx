@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from "react";
-import PropTypes from "prop-types";
-import Media from "react-media";
-import { ChessBoardMobi, ChessBoardPC, BoxGame, FigureImpg } from "./GameBoard.styled";
-import HelperBoardMobi from "components/helperBoard/HelperBoardMobi";
-import HelperBoardPC from "components/helperBoard/HelperBoardPC";
-import { Square } from "./GameBoard.styled";
-import showFigure from "helpers/showFigure";
+import HelperBoard from "@components/helperBoard/HelperBoard";
+import showFigure from "@helpers/showFigure";
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 type PropTypes = {
@@ -13,15 +8,13 @@ type PropTypes = {
 };
 
 const GameBoard: React.FC<PropTypes> = ({ connect }) => {
-    // const { sendMessage, lastMessage } = connect;
     const [board, setBoard] = useState([{ _id: 1, figure: "" }]);
     const [activFigure, setActivFigure] = useState({ _id: 1, figure: "" });
     const startPosition = "rnbqkbnrpppppppp88888888888888888888888888888888PPPPPPPPRNBQKBNR";
 
     useEffect(() => {
         const startPositionArr = startPosition.split("");
-        let boardEmpty: any = [];
-        // расставим фигуры по доске
+        const boardEmpty: any = [];
         const createSquare = () => {
             for (let cord = 0; cord < 64; cord++) {
                 boardEmpty.push({ _id: cord, figure: startPositionArr[cord] });
@@ -47,46 +40,50 @@ const GameBoard: React.FC<PropTypes> = ({ connect }) => {
         setActivFigure({ _id: 0, figure: "" });
     };
 
-    // useEffect(() => {
-    //     // console.log("active", activFigure);
-    //     console.log("doska", board);
-    // }, [activFigure, board]);
+    const squareStyle = (color: string): React.CSSProperties => ({
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        border: "1px solid var(--color-border)",
+        width: "12.5%",
+        height: "12.5%",
+        backgroundColor: color === "black" ? "var(--color-bg-board-dark)" : "var(--color-bg-board)",
+        color: color === "black" ? "var(--color-bg-board)" : "var(--color-text-primary)",
+    });
 
     return (
-        <BoxGame>
-            <Media
-                query="(max-width: 767px)"
-                render={() => (
-                    <ChessBoardMobi>
-                        {board.map((element, index, array) => {
-                            const clr = ((index % 8) + Math.floor(index / 8)) % 2 ? "black" : "wite";
-                            return (
-                                <Square onClick={(e: any) => eventHandler(e, index)} key={index} color={clr}>
-                                    <FigureImpg src={showFigure(index, element.figure)} alt="" />
-                                </Square>
-                            );
-                        })}
-                    </ChessBoardMobi>
-                )}
-            />
-            <Media
-                query="(min-width: 768px)"
-                render={() => (
-                    <ChessBoardPC>
-                        {board.map((element, index, array) => {
-                            const clr = ((index % 8) + Math.floor(index / 8)) % 2 ? "black" : "wite";
-                            return (
-                                <Square onClick={(e: any) => eventHandler(e, index)} key={index} color={clr}>
-                                    <FigureImpg src={showFigure(index, element.figure)} alt="" />
-                                </Square>
-                            );
-                        })}
-                    </ChessBoardPC>
-                )}
-            />
-            <Media query="(max-width: 767px)" render={() => <HelperBoardMobi />} />
-            <Media query="(min-width: 768px)" render={() => <HelperBoardPC />} />
-        </BoxGame>
+        <div className="flex flex-col items-center flex-grow bg-theme-primary md:flex-row md:overflow-hidden">
+            {/* Chess board */}
+            <div
+                className="chess-board flex flex-wrap justify-center items-center w-full max-w-[min(90vw,90vh)] aspect-square border-solid"
+                style={{
+                    backgroundColor: "var(--color-bg-board)",
+                    borderWidth: "10px",
+                    borderColor: "var(--color-bg-board-dark)",
+                }}
+            >
+                {board.map((element, index) => {
+                    const clr = ((index % 8) + Math.floor(index / 8)) % 2 ? "black" : "white";
+                    return (
+                        <div
+                            key={index}
+                            className="flex justify-center items-center border-solid w-[12.5%] h-[12.5%] square"
+                            style={{
+                                backgroundColor: clr === "black" ? "var(--color-bg-board-dark)" : "var(--color-bg-board)",
+                                borderWidth: "1px",
+                                borderColor: "var(--color-border)",
+                            }}
+                            onClick={(e: any) => eventHandler(e, index)}
+                        >
+                            <img src={showFigure(index, element.figure)} alt="" className="w-[80%] h-[80%] object-contain" />
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Helper board */}
+            <HelperBoard />
+        </div>
     );
 };
 

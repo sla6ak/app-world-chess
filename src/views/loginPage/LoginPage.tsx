@@ -1,6 +1,6 @@
 import React from "react";
-import LoginForm from "components/loginForm/LoginForm";
-import BackgroundPage from "components/backgroundPage/BackgroundPage";
+import LoginForm from "@components/loginForm/LoginForm";
+import BackgroundPage from "@components/backgroundPage/BackgroundPage";
 
 const LoginPage = () => {
     return (

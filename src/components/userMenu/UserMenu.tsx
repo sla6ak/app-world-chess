@@ -1,48 +1,31 @@
-import { useState } from "react";
+import React from "react";
 import { useSelector } from "react-redux";
-import LogoutIcon from "@mui/icons-material/Logout";
-import Modal from "components/modal/Modal";
-import ModalLogOut from "components/modalLogOut/modalLogOut";
-import { Greeeting, LogOutBtn, Wrapper, TextBtn } from "./UserMenu.styled";
 import { useNavigate } from "react-router-dom";
 
 const UserMenu = () => {
-    const [modal, setModal] = useState(false);
     const navigate = useNavigate();
-
     const userName = useSelector((state: any) => state.userName);
 
     return (
-        <Wrapper>
-            <Greeeting
-                onClick={() => {
-                    navigate("/statistic");
-                }}
+        <div className="flex items-center gap-3 sm:gap-4">
+            {/* User avatar + name */}
+            <div
+                className="flex items-center gap-2 cursor-pointer group"
+                onClick={() => navigate("/statistic")}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === "Enter" && navigate("/statistic")}
             >
-                {userName}
-            </Greeeting>
-            <LogOutBtn
-                onClick={() => {
-                    setModal(true);
-                }}
-            >
-                <LogoutIcon />
-                <TextBtn> Exit </TextBtn>
-            </LogOutBtn>
-            {modal ? (
-                <Modal
-                    onModalClose={() => {
-                        setModal(false);
-                    }}
-                >
-                    <ModalLogOut
-                        onModalClose={() => {
-                            setModal(false);
-                        }}
-                    />
-                </Modal>
-            ) : null}
-        </Wrapper>
+                <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-sm font-bold border border-accent/30 group-hover:bg-accent/30 transition-colors duration-200">
+                    {userName.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-sm font-medium transition-colors duration-200 group-hover:underline" style={{ color: "var(--color-text-primary)" }}>
+                    {userName}
+                </span>
+            </div>
+
+
+        </div>
     );
 };
 

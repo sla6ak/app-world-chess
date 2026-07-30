@@ -1,10 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate, Outlet } from "react-router-dom";
-import { BackgroundProfile } from "./DashboardPage.style";
-import AppBarMobi from "components/appBar/AppBarMobi";
-import Media from "react-media";
-import AppBarPC from "components/appBar/AppBarPC";
-import PropTypes from "prop-types";
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 type PropTypes = {
@@ -23,11 +18,12 @@ const DashboardPage: React.FC<PropTypes> = ({ curentG }) => {
     }, []);
 
     return (
-        <BackgroundProfile>
-            <Media query="(max-width: 767px)" render={() => <AppBarMobi />} />
-            <Media query="(min-width: 768px)" render={() => <AppBarPC />} />
-            <Outlet />
-        </BackgroundProfile>
+        <div className="flex flex-col h-full bg-theme-primary md:flex-row md:max-h-screen">
+            {/* Content sits above the background */}
+            <div className="relative z-20 min-h-full w-full">
+                <Outlet />
+            </div>
+        </div>
     );
 };
 
