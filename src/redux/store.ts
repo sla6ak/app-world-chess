@@ -6,6 +6,7 @@ import { curentWsID } from "./sliceWsID";
 import { colorGame } from "./sliceColor";
 import { curentUser } from "./sliceUserName";
 import { themeSlice } from "./sliceTheme";
+import { roomReducer } from "./sliceRoom";
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from "redux-persist";
 
 const tokenPersistConfig = {
@@ -21,6 +22,7 @@ const rootReduser = combineReducers({
     colorGame: colorGame.reducer,
     WsID: curentWsID.reducer,
     theme: themeSlice.reducer,
+    room: roomReducer,
 });
 
 const persistedReducer = persistReducer(tokenPersistConfig, rootReduser);
@@ -31,6 +33,7 @@ export const store = configureStore({
         getDefaultMiddleware({
             serializableCheck: {
                 ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+                ignoredPaths: ["room.room"],
             },
         }).concat(authApi.middleware),
 });
@@ -38,3 +41,4 @@ export const store = configureStore({
 export const persistor = persistStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
