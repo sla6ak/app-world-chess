@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import client from "../colyseus/client";
 import { setRoom, getRoom } from "../colyseus/roomManager";
+import { authApi } from "./authAPI";
 import type { RootState } from "./store";
 
 export const connectToRoom = createAsyncThunk<
@@ -59,19 +60,35 @@ export const findGame = createAsyncThunk<
     }
 );
 
-export const cancelSearch = createAsyncThunk(
+export const cancelSearch = createAsyncThunk<
+    { success: boolean },
+    string | null | undefined,
+    { state: RootState }
+>(
     "room/cancelSearch",
-    async (_, { rejectWithValue }) => {
+    async (gameId, { rejectWithValue, dispatch }) => {
+        // REST-запрос на бекенд для удаления незапущенной игры по ID
+        if (gameId) {
+            try {
+                await dispatch(
+                    authApi.endpoints.cancelSearchRoom.initiate({ gameId })
+                ).unwrap();
+            } catch {
+                // Не блокируем отмену, если REST-запрос не удался
+            }
+        }
+
+        // Также отправляем WS-сообщение для уведомления комнаты
         try {
             const room = getRoom();
-            if (!room) {
-                return rejectWithValue("Room is not connected");
+            if (room) {
+                room.send("cancelSearch", { gameId });
             }
-            room.send("cancelSearch");
-            return { success: true };
         } catch (error: any) {
-            return rejectWithValue(error.message || "Failed to cancel search");
+            // ignore WS errors
         }
+
+        return { success: true };
     }
 );
 

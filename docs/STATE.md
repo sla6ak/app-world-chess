@@ -105,6 +105,26 @@ export const store = configureStore({
 
 ---
 
+### `gameEvents` — Состояние поиска и игровых событий
+
+| Поле | Тип | Начальное значение |
+|------|-----|-------------------|
+| `status` | `"idle" \| "searching" \| "playing" \| "gameover"` | `"idle"` |
+| `searchData` | `SearchGameData \| null` | `null` |
+| `gameOverData` | `GameOverData \| null` | `null` |
+| `searchGameId` | `string \| null` | `null` |
+
+**Действия:**
+- `setSearchMode({ typeGame, timeControl, timePluse })` — устанавливает статус `"searching"` и данные поиска
+- `setSearchGameId(gameId)` — сохранает ID созданной игры для последующей отмены
+- `setGameStart()` — устанавливает статус `"playing"`
+- `setGameOver({ result, ratingChange })` — устанавливает статус `"gameover"` и данные завершения
+- `resetGameEvents()` — сбрасывает всё в начальное состояние, включая `searchGameId`
+
+> `searchGameId` сохраняется после `createSearchRoom` и передаётся при отмене поиска (`cancelSearch`), чтобы бекенд мог найти и удалить именно эту игру.
+
+---
+
 ### `authApi` (RTK Query)
 
 Автоматически сгенерированный слайс для управления REST API запросами авторизации.
@@ -117,6 +137,10 @@ export const store = configureStore({
 | `loginUser` | mutation | `["user"]` |
 | `emailVerify` | mutation | `["user"]` |
 | `unLoginUser` | mutation | `["user"]` |
+| `createSearchRoom` | mutation | `["user"]` |
+| `cancelSearchRoom` | mutation | `["user"]` |
+
+`cancelSearchRoom` — удаляет созданную, но не начатую игру (`statusGame: "open"`, `result: "pending"`) по `gameId`.
 
 ## Типы состояния
 

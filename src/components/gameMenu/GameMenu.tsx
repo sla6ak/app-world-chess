@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 import { useCreateSearchRoomMutation } from "@redux/authAPI";
 import { findGame, cancelSearch, leaveRoom } from "@redux/roomThunks";
-import { setSearchMode, resetGameEvents } from "@redux/sliceGameEvents";
+import { setSearchMode, resetGameEvents, setSearchGameId } from "@redux/sliceGameEvents";
 import { useAppDispatch } from "@redux/store";
 import type { RootState } from "@redux/store";
 import Modal from "../modal/Modal";
@@ -28,9 +28,11 @@ const GameMenu: React.FC<PropTypes> = () => {
         setTypeGame((prev) => (prev === "standart" ? "fisher" : "standart"));
     };
 
+    const searchGameId = useSelector((state: RootState) => state.gameEvents.searchGameId);
+
     const handleCancelSearch = async () => {
         try {
-            await dispatch(cancelSearch()).unwrap();
+            await dispatch(cancelSearch(searchGameId)).unwrap();
         } catch {
             // ignore cancel errors
         }
@@ -46,18 +48,23 @@ const GameMenu: React.FC<PropTypes> = () => {
 
         // Step 1: Create the search room via REST API
         setCreatingRoom(true);
+        let createdGameId: string | null = null;
         try {
-            await createSearchRoom({
+            const result = await createSearchRoom({
                 typeGame,
                 timeControl,
                 timePluse,
             }).unwrap();
+            createdGameId = result?.game?._id || result?.id || null;
         } catch (error) {
             toast.error("Failed to create search room");
             setCreatingRoom(false);
             return;
         }
         setCreatingRoom(false);
+        if (createdGameId) {
+            dispatch(setSearchGameId(createdGameId));
+        }
 
         // Step 2: Send the WebSocket findGame message
         // Server will broadcast "searching" status, which will update Redux and show the modal

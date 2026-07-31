@@ -60,6 +60,14 @@ export const authApi = createApi({
             }),
             invalidatesTags: ["user"],
         }),
+        cancelSearchRoom: builder.mutation({
+            query: (gameData) => ({
+                url: `/game/cancel`,
+                method: "POST",
+                body: gameData,
+            }),
+            invalidatesTags: ["user"],
+        }),
     }),
 });
 
@@ -70,4 +78,5 @@ export const {
     useLoginUserMutation,
     useUnLoginUserMutation,
     useCreateSearchRoomMutation,
+    useCancelSearchRoomMutation,
 } = authApi;

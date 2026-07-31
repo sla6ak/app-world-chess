@@ -21,12 +21,14 @@ export interface GameEventsState {
     status: GameStatus;
     searchData: SearchGameData | null;
     gameOverData: GameOverData | null;
+    searchGameId: string | null;
 }
 
 const initialState: GameEventsState = {
     status: "idle",
     searchData: null,
     gameOverData: null,
+    searchGameId: null,
 };
 
 const gameEventsSlice = createSlice({
@@ -37,6 +39,9 @@ const gameEventsSlice = createSlice({
             state.status = "searching";
             state.searchData = action.payload;
             state.gameOverData = null;
+        },
+        setSearchGameId(state, action: PayloadAction<string | null>) {
+            state.searchGameId = action.payload;
         },
         setGameStart(state) {
             state.status = "playing";
@@ -52,11 +57,12 @@ const gameEventsSlice = createSlice({
             state.status = "idle";
             state.searchData = null;
             state.gameOverData = null;
+            state.searchGameId = null;
         },
     },
 });
 
-export const { setSearchMode, setGameStart, setGameOver, resetGameEvents } =
+export const { setSearchMode, setGameStart, setGameOver, resetGameEvents, setSearchGameId } =
     gameEventsSlice.actions;
 
 export const gameEventsReducer = gameEventsSlice.reducer;
