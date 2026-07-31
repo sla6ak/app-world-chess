@@ -1,66 +1,62 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import client from "@services/client";
-import { setRoom, getRoom } from "@services/roomManager";
 import { authApi } from "@redux/api/authApi";
+import { setRoom, getRoom } from "@services/roomManager";
+import client from "@services/client";
+import {
+    setSearchMode,
+    setGameStart,
+    setGameOver,
+    resetGameEvents,
+    setSearchGameId,
+} from "@redux/slices/gameEvents";
+import { roomSlice } from "@redux/slices/room";
 import type { RootState } from "@redux/store";
+import type { AppDispatch } from "@redux/store";
 
-export const connectToRoom = createAsyncThunk<
-    { roomId: string },
-    { token: string; color: string },
+/**
+ * startSearch — REST: створити пошук гри або підключитися до існуючої.
+ *
+ * Викликає POST /game/find. Якщо сервер знайшов суперника — повертає
+ * status: "matched" з повними даними гри. Якщо створено нову гру —
+ * повертає status: "waiting" з gameId.
+ *
+ * Після цього клієнт підключається до WS кімнати і чекає gameStart
+ * через WebSocket (пулінг не потрібний).
+ */
+export const startSearch = createAsyncThunk<
+    { status: string; gameId?: string; game?: any },
+    { typeGame: string; timeControl: number; timePluse: number },
     { state: RootState }
 >(
-    "room/connect",
-    async ({ token, color }, { rejectWithValue }) => {
+    "room/startSearch",
+    async ({ typeGame, timeControl, timePluse }, { dispatch, getState, rejectWithValue }) => {
         try {
-            const room = await client.joinOrCreate("chess_room", { token, color });
-            setRoom(room);
-            return { roomId: room.roomId };
+            console.log("[REST] Starting game search | typeGame:", typeGame,
+                "| timeControl:", timeControl, "| timePluse:", timePluse);
+
+            const result = await dispatch(
+                authApi.endpoints.createSearchRoom.initiate({
+                    typeGame,
+                    timeControl,
+                    timePluse,
+                })
+            ).unwrap();
+
+            console.log("[REST] Search response | status:", result.status,
+                "| gameId:", result.gameId, "| message:", result.message);
+
+            return result;
         } catch (error: unknown) {
-            return rejectWithValue(error instanceof Error ? error.message : "Failed to connect to room");
+            console.error("[REST] Failed to start search:", error);
+            return rejectWithValue(error instanceof Error ? error.message : "Failed to start search");
         }
     }
 );
 
-export const sendRoomMessage = createAsyncThunk<
-    { success: boolean },
-    { event: string; data?: unknown },
-    { state: RootState }
->(
-    "room/sendMessage",
-    async ({ event, data }, { rejectWithValue }) => {
-        try {
-            const room = getRoom();
-            if (!room) {
-                return rejectWithValue("Room is not connected");
-            }
-            room.send(event, data);
-            return { success: true };
-        } catch (error: unknown) {
-            return rejectWithValue(error instanceof Error ? error.message : "Failed to send message");
-        }
-    }
-);
-
-export const findGame = createAsyncThunk<
-    { roomId: string; message: string },
-    { token: string; color: string; typeGame?: string; timeControl?: number; timePluse?: number },
-    { state: RootState }
->(
-    "room/findGame",
-    async ({ token, color, typeGame, timeControl, timePluse }, { rejectWithValue, getState }) => {
-        try {
-            const room = getRoom();
-            if (!room) {
-                return rejectWithValue("Room is not connected");
-            }
-            room.send("findGame", { token, color, typeGame, timeControl, timePluse });
-            return { roomId: (getState() as any).room.roomId || "", message: "findGame sent" };
-        } catch (error: unknown) {
-            return rejectWithValue(error instanceof Error ? error.message : "Failed to find game");
-        }
-    }
-);
-
+/**
+ * cancelSearch — REST: скасувати пошук гри.
+ * Видаляє незапущену гру з MongoDB.
+ */
 export const cancelSearch = createAsyncThunk<
     { success: boolean },
     string | null | undefined,
@@ -68,46 +64,102 @@ export const cancelSearch = createAsyncThunk<
 >(
     "room/cancelSearch",
     async (gameId, { dispatch }) => {
-        // REST-запрос на бекенд для удаления незапущенной игры по ID
-        if (gameId) {
-            try {
-                await dispatch(
-                    authApi.endpoints.cancelSearchRoom.initiate({ gameId })
-                ).unwrap();
-            } catch {
-                // Не блокируем отмену, если REST-запрос не удался
-            }
+        console.log("[REST] Cancelling search | gameId:", gameId);
+
+        if (!gameId) {
+            return { success: true };
         }
 
-        // Также отправляем WS-сообщение для уведомления комнаты
         try {
-            const room = getRoom();
-            if (room) {
-                room.send("cancelSearch", { gameId });
-            }
-        } catch (error: unknown) {
-            // ignore WS errors
+            await dispatch(
+                authApi.endpoints.cancelSearchRoom.initiate({ gameId })
+            ).unwrap();
+            console.log("[REST] Search cancelled successfully | gameId:", gameId);
+        } catch (error) {
+            console.error("[REST] Failed to cancel search:", error);
         }
 
         return { success: true };
     }
 );
 
-export const leaveRoom = createAsyncThunk(
-    "room/leave",
-    async (_, { rejectWithValue }) => {
+
+
+/**
+ * connectToRoom — підключення до WS кімнати для ігрового процесу.
+ * Тепер підключається з gameId, щоб завантажити ігровий стан з MongoDB.
+ */
+export const connectToRoom = createAsyncThunk<
+    { roomId: string },
+    { token: string; color: string; gameId?: string },
+    { state: RootState }
+>(
+    "room/connect",
+    async ({ token, color, gameId }, { rejectWithValue }) => {
         try {
-            const room = getRoom();
-            if (room) {
-                await room.leave();
-                setRoom(null);
-            }
-            return { success: true };
+            console.log("[WS] Connecting to Colyseus room with gameId:", gameId || "chess_room");
+            const room = await client.joinOrCreate("chess_room", { token, color, gameId });
+            setRoom(room);
+            console.log("[WS] Connected to room, roomId:", room.roomId);
+            return { roomId: room.roomId };
         } catch (error: unknown) {
-            return rejectWithValue(error instanceof Error ? error.message : "Failed to leave room");
+            console.error("[WS] Failed to connect to room:", error);
+            return rejectWithValue(error instanceof Error ? error.message : "Failed to connect to room");
         }
     }
 );
 
-const roomThunks = { connectToRoom, sendRoomMessage, findGame, cancelSearch, leaveRoom };
+/**
+ * sendGameMove — WS: надіслати хід під час активної партії.
+ */
+export const sendGameMove = createAsyncThunk<
+    { success: boolean },
+    { position: string[]; move: boolean },
+    { state: RootState }
+>(
+    "room/sendGameMove",
+    async ({ position, move }, { rejectWithValue }) => {
+        try {
+            const room = getRoom();
+            if (!room) {
+                return rejectWithValue("Room is not connected");
+            }
+            room.send("gameMove", { position, move });
+            return { success: true };
+        } catch (error: unknown) {
+            return rejectWithValue(error instanceof Error ? error.message : "Failed to send move");
+        }
+    }
+);
+
+/**
+ * sendGameOver — WS: повідомити про завершення гри.
+ */
+export const sendGameOver = createAsyncThunk<
+    { success: boolean },
+    { result: string; ratingChange: number },
+    { state: RootState }
+>(
+    "room/sendGameOver",
+    async ({ result, ratingChange }, { rejectWithValue }) => {
+        try {
+            const room = getRoom();
+            if (!room) {
+                return rejectWithValue("Room is not connected");
+            }
+            room.send("gameOver", { result, ratingChange });
+            return { success: true };
+        } catch (error: unknown) {
+            return rejectWithValue(error instanceof Error ? error.message : "Failed to send game over");
+        }
+    }
+);
+
+const roomThunks = {
+    startSearch,
+    cancelSearch,
+    connectToRoom,
+    sendGameMove,
+    sendGameOver,
+};
 export default roomThunks;

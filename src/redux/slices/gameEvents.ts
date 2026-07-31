@@ -22,6 +22,7 @@ export interface GameEventsState {
     searchData: SearchGameData | null;
     gameOverData: GameOverData | null;
     searchGameId: string | null;
+    pollingInterval: ReturnType<typeof setInterval> | null;
 }
 
 const initialState: GameEventsState = {
@@ -29,6 +30,7 @@ const initialState: GameEventsState = {
     searchData: null,
     gameOverData: null,
     searchGameId: null,
+    pollingInterval: null,
 };
 
 const gameEventsSlice = createSlice({
@@ -58,6 +60,10 @@ const gameEventsSlice = createSlice({
             state.searchData = null;
             state.gameOverData = null;
             state.searchGameId = null;
+            if (state.pollingInterval) {
+                clearInterval(state.pollingInterval);
+                state.pollingInterval = null;
+            }
         },
     },
 });

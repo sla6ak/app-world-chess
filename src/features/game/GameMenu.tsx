@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 import { useCreateSearchRoomMutation } from "@redux/api/authApi";
-import { findGame, cancelSearch } from "@redux/thunks/roomThunks";
-import { resetGameEvents, setSearchGameId } from "@redux/slices/gameEvents";
+import { startSearch, cancelSearch, connectToRoom } from "@redux/thunks/roomThunks";
+import { resetGameEvents, setSearchMode, setSearchGameId } from "@redux/slices/gameEvents";
+import { connectRoomSuccess } from "@redux/slices/room";
 import { useAppDispatch } from "@redux/store";
 import type { RootState } from "@redux/store";
 import Modal from "@components/modal/Modal";
@@ -17,9 +18,9 @@ const GameMenu: React.FC<PropTypes> = () => {
     const gameStatus = useSelector((state: RootState) => (state as any).gameEvents.status);
     const color = useSelector((state: RootState) => (state as any).colorGame);
     const token = useSelector((state: RootState) => (state as any).token);
-    const connected = useSelector((state: RootState) => (state as any).room.connected);
+    const searchGameId = useSelector((state: RootState) => (state as any).gameEvents.searchGameId);
     const dispatch = useAppDispatch();
-    const [typeGame, setTypeGame] = useState("standart");
+    const [typeGame, setTypeGame] = useState<"standart" | "fisher">("standart");
     const [createSearchRoom] = useCreateSearchRoomMutation();
 
     const isSearching = gameStatus === "searching";
@@ -28,7 +29,74 @@ const GameMenu: React.FC<PropTypes> = () => {
         setTypeGame((prev) => (prev === "standart" ? "fisher" : "standart"));
     };
 
-    const searchGameId = useSelector((state: RootState) => (state as any).gameEvents.searchGameId);
+    /**
+     * Почати пошук гри через REST.
+     * 1. Створюємо гру через REST (POST /game/find)
+     * 2. Якщо matched — одразу підключаємось до WS кімнати
+     * 3. Якщо waiting — підключаємось до WS кімнати і чекаємо gameStart через WS push
+     */
+    const handleStartSearch = async (timeControl: number, timePluse: number) => {
+        // Скасовуємо будь-який активний пошук перед новим
+        if (isSearching && searchGameId) {
+            await dispatch(cancelSearch(searchGameId)).unwrap();
+            dispatch(resetGameEvents());
+        }
+
+        setCreatingRoom(true);
+        try {
+            // Крок 1: REST — створюємо пошук гри
+            const result = await dispatch(
+                startSearch({ typeGame, timeControl, timePluse })
+            ).unwrap();
+
+            setCreatingRoom(false);
+
+            if (result.status === "matched" && result.game) {
+                // Гру знайдено суперника — підключаємось до WS кімнати
+                const gameId = result.game._id;
+                console.log("[GameMenu] 🎯 Matched immediately! gameId:", gameId);
+                dispatch(setSearchGameId(gameId));
+                dispatch(connectToRoom({ token, color, gameId }))
+                    .unwrap()
+                    .then(() => {
+                        dispatch(connectRoomSuccess({ roomId: gameId }));
+                        dispatch(setSearchMode({ typeGame, timeControl, timePluse }));
+                        toast.info(`Game found! (${timeControl} + ${timePluse} min, ${typeGame})`);
+                    })
+                    .catch((err) => {
+                        toast.error("Failed to connect to game room");
+                        dispatch(resetGameEvents());
+                    });
+            } else if (result.status === "waiting" && result.gameId) {
+                // Чекаємо на суперника — підключаємось до WS кімнати і чекаємо gameStart через WS push
+                const gameId = result.gameId;
+                console.log("[GameMenu] ⏳ Waiting for opponent, gameId:", gameId);
+                dispatch(setSearchGameId(gameId));
+
+                // Підключаємось до WS кімнати одразу — сервер pushить gameStart коли обидва гравці в кімнаті
+                dispatch(connectToRoom({ token, color, gameId }))
+                    .unwrap()
+                    .then(() => {
+                        dispatch(connectRoomSuccess({ roomId: gameId }));
+                        dispatch(setSearchMode({ typeGame, timeControl, timePluse }));
+                        toast.info(`Waiting for opponent (${timeControl} + ${timePluse} min, ${typeGame})...`);
+                    })
+                    .catch((err) => {
+                        toast.error("Failed to connect to game room");
+                        dispatch(resetGameEvents());
+                    });
+            } else {
+                // Невідома відповідь
+                toast.error("Unexpected response from server");
+                dispatch(resetGameEvents());
+            }
+        } catch (error) {
+            setCreatingRoom(false);
+            console.error("[GameMenu] Failed to start search:", error);
+            toast.error("Failed to start game search");
+            dispatch(resetGameEvents());
+        }
+    };
 
     const handleCancelSearch = async () => {
         try {
@@ -37,46 +105,7 @@ const GameMenu: React.FC<PropTypes> = () => {
             // ignore cancel errors
         }
         dispatch(resetGameEvents());
-        // Toast is also shown by the backend's search_cancelled WebSocket message
-    };
-
-    const handleClickSendMessage = async (timeControl: number, timePluse: number) => {
-        if (!connected) {
-            toast.error("Not connected to server");
-            return;
-        }
-
-        // Step 1: Create the search room via REST API
-        setCreatingRoom(true);
-        let createdGameId: string | null = null;
-        try {
-            const result = await createSearchRoom({
-                typeGame,
-                timeControl,
-                timePluse,
-            }).unwrap();
-            createdGameId = result?.game?._id || result?.id || null;
-        } catch (error) {
-            toast.error("Failed to create search room");
-            setCreatingRoom(false);
-            return;
-        }
-        setCreatingRoom(false);
-        if (createdGameId) {
-            dispatch(setSearchGameId(createdGameId));
-        }
-
-        // Step 2: Send the WebSocket findGame message
-        // Server will broadcast "searching" status, which will update Redux and show the modal
-        try {
-            await dispatch(
-                findGame({ token, color, typeGame, timeControl, timePluse })
-            ).unwrap();
-            toast.info(`Searching for opponent (${timeControl} + ${timePluse} min, ${typeGame})...`);
-        } catch (error) {
-            toast.error("Failed to start game search");
-            dispatch(resetGameEvents());
-        }
+        toast.info("Game search cancelled");
     };
 
     const timeControls = [
@@ -125,8 +154,8 @@ const GameMenu: React.FC<PropTypes> = () => {
                     {timeControls.map(({ tc, tp, label }) => (
                         <button
                             key={`${tc}-${tp}`}
-                            onClick={() => handleClickSendMessage(tc, tp)}
-                            disabled={!connected || creatingRoom || isSearching}
+                            onClick={() => handleStartSearch(tc, tp)}
+                            disabled={creatingRoom || isSearching}
                             className="group relative flex flex-col items-center justify-center w-full rounded-xl font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(102,53,23,0.35)] active:translate-y-0.5 active:shadow-[0_2px_6px_rgba(102,53,23,0.2)] disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent overflow-hidden"
                             style={{
                                 backgroundColor: "rgba(102, 53, 23, 0.85)",

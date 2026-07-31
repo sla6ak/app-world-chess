@@ -5,7 +5,7 @@ import { useIsActivTokenQuery } from "@redux/api/authApi";
 import { setUserName, setUserStats } from "@redux/slices/user";
 import { connectToRoom } from "@redux/thunks/roomThunks";
 import { roomSlice } from "@redux/slices/room";
-import { setSearchMode, setGameStart, setGameOver, resetGameEvents, GameType, GameResult } from "@redux/slices/gameEvents";
+import { setSearchMode, setGameStart, setGameOver, resetGameEvents, GameResult } from "@redux/slices/gameEvents";
 import { getRoom } from "@services/roomManager";
 import Layout from "@layouts/Layout";
 import { applyTheme } from "@helpers/theme";
@@ -55,34 +55,21 @@ function AppContent() {
         applyTheme(currentTheme);
     }, [currentTheme]);
 
-    // Автоподключение к Colyseus комнате при логине
-    useEffect(() => {
-        if (userName.length > 1 && token && !roomId) {
-            dispatch(connectToRoom({ token, color }))
-                .unwrap()
-                .then((result) => {
-                    dispatch(roomSlice.actions.connectRoomSuccess(result));
-                    roomRef.current = getRoom();
-                    toast.success(`Connected to room ${result.roomId}`);
-                })
-                .catch((err) => {
-                    dispatch(roomSlice.actions.connectRoomFailure(err || "Failed to connect"));
-                });
-        }
-    }, [userName, token, roomId, dispatch, color]);
-
-    // Подписка на сообщения комнаты
+    // Підписка на повідомлення комнаты (тільки для ігрового процесу — ходи, завершення)
+    // WS підключення до конкретної кімнати відбувається при пошуку гри
     useEffect(() => {
         const room = roomRef.current || getRoom();
         if (!room) return;
 
+        console.log("[WS] Subscribing to room messages, roomId:", room.id);
+
         const handleGameMessage = (message: unknown) => {
-            console.log("game message:", message);
+            console.log("[WS] Received 'game' event:", JSON.stringify(message));
             setCurentG(true);
         };
 
         const handleGameStart = (message: unknown) => {
-            console.log("gameStart message:", message);
+            console.log("[WS] Received 'gameStart' event:", JSON.stringify(message));
             const msg = message as {
                 idGame: string;
                 position: string[];
@@ -98,6 +85,9 @@ function AppContent() {
                 timeControl: number;
                 timePluse: number;
             };
+            console.log("[WS] gameStart — idGame:", msg.idGame,
+                "| white:", msg.playerWite,
+                "| black:", msg.playerBlack);
             dispatch(
                 roomSlice.actions.gameStartSuccess({
                     idGame: msg.idGame,
@@ -117,28 +107,17 @@ function AppContent() {
             );
             dispatch(setGameStart());
             setCurentG(true);
+            console.log("[WS] Navigating to /game");
             navigate("/game");
             toast.success("Game found! Starting...");
         };
 
-        const handleSearching = (message: unknown) => {
-            console.log("searching message:", message);
-            const msg = message as { searchData: { typeGame: GameType; timeControl: number; timePluse: number } };
-            if (msg.searchData) {
-                dispatch(
-                    setSearchMode({
-                        typeGame: msg.searchData.typeGame,
-                        timeControl: msg.searchData.timeControl,
-                        timePluse: msg.searchData.timePluse,
-                    })
-                );
-            }
-        };
-
         const handleGameOver = (message: unknown) => {
-            console.log("gameOver message:", message);
+            console.log("[WS] Received 'gameOver' event:", JSON.stringify(message));
             const msg = message as { gameOverData: { result: GameResult; ratingChange: number } };
             if (msg.gameOverData) {
+                console.log("[WS] gameOver — result:", msg.gameOverData.result,
+                    "| ratingChange:", msg.gameOverData.ratingChange);
                 dispatch(
                     setGameOver({
                         result: msg.gameOverData.result,
@@ -147,37 +126,20 @@ function AppContent() {
                 );
             }
             setCurentG(false);
+            console.log("[WS] Navigating to /home (game over)");
             navigate("/home");
-        };
-
-        const handleSearchCancelled = (message: unknown) => {
-            console.log("search_cancelled message:", message);
-            dispatch(resetGameEvents());
-            toast.info("Game search cancelled");
-        };
-
-        const handleSearchCancelledByOpponent = (message: unknown) => {
-            console.log("search_cancelled_by_opponent message:", message);
-            dispatch(resetGameEvents());
-            toast.info("Opponent cancelled the search");
         };
 
         const unsubscribeGame = room.onMessage("game", handleGameMessage);
         const unsubscribeGameStart = room.onMessage("gameStart", handleGameStart);
-        const unsubscribeSearching = room.onMessage("searching", handleSearching);
-        const unsubscribeSearchCancelled = room.onMessage("search_cancelled", handleSearchCancelled);
-        const unsubscribeSearchCancelledByOpponent = room.onMessage("search_cancelled_by_opponent", handleSearchCancelledByOpponent);
         const unsubscribeGameOver = room.onMessage("gameOver", handleGameOver);
 
         return () => {
             unsubscribeGame();
             unsubscribeGameStart();
-            unsubscribeSearching();
-            unsubscribeSearchCancelled();
-            unsubscribeSearchCancelledByOpponent();
             unsubscribeGameOver();
         };
-    }, [roomId, dispatch, navigate]);
+    }, [roomId, dispatch, navigate, token, color]);
 
     return (
         <Routes>
