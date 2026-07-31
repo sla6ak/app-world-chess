@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import UserMenu from "@components/userMenu/UserMenu";
 import ThemeSwitcher from "@components/themeSwitcher/ThemeSwitcher";
 import Modal from "@components/modal/Modal";
-import ModalLogOut from "@components/modalLogOut/modalLogOut";
+import ModalLogOut from "@features/auth/ModalLogOut";
 
 const MobileHeader = () => {
     const [menuOpen, setMenuOpen] = useState(false);

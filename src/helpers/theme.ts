@@ -34,3 +34,6 @@ export function getCurrentTheme(): string {
 
 /** Material theme placeholder — kept for compatibility */
 export const materialTheme: any = null;
+
+const theme = { THEMES, applyTheme, getCurrentTheme, materialTheme };
+export default theme;

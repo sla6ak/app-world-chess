@@ -3,7 +3,7 @@ import { useState } from 'react';
 import UserMenu from '@components/userMenu/UserMenu';
 import ThemeSwitcher from '@components/themeSwitcher/ThemeSwitcher';
 import Modal from '@components/modal/Modal';
-import ModalLogOut from '@components/modalLogOut/modalLogOut';
+import ModalLogOut from '@features/auth/ModalLogOut';
 
 const Sidebar = () => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);

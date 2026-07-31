@@ -1,6 +1,6 @@
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { setTheme } from "@redux/sliceTheme";
+import { setTheme } from "@redux/slices/theme";
 import type { RootState } from "@redux/store";
 
 const themes = [
@@ -12,7 +12,7 @@ const themes = [
 
 const ThemeSwitcher = () => {
     const dispatch = useDispatch();
-    const currentTheme = useSelector((state: RootState) => state.theme);
+    const currentTheme = useSelector((state: RootState) => (state as any).theme);
 
     const handleThemeChange = (themeId: string) => {
         dispatch(setTheme(themeId));

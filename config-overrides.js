@@ -7,7 +7,11 @@ module.exports = function override(config, env) {
     '@helpers': path.resolve(__dirname, 'src/helpers'),
     '@layouts': path.resolve(__dirname, 'src/layouts'),
     '@redux': path.resolve(__dirname, 'src/redux'),
-    '@views': path.resolve(__dirname, 'src/views'),
+    '@services': path.resolve(__dirname, 'src/services'),
+    '@pages': path.resolve(__dirname, 'src/pages'),
+    '@features': path.resolve(__dirname, 'src/features'),
+    '@config': path.resolve(__dirname, 'src/config'),
+    '@images': path.resolve(__dirname, 'src/images'),
   };
 
   return config;
@@ -20,7 +24,7 @@ module.exports.jest = function jestConfig(config) {
     '^@helpers/(.*)$': '<rootDir>/src/helpers/$1',
     '^@layouts/(.*)$': '<rootDir>/src/layouts/$1',
     '^@redux/(.*)$': '<rootDir>/src/redux/$1',
-    '^@views/(.*)$': '<rootDir>/src/views/$1',
+
   };
 
   // Allow ESM modules in @reduxjs/toolkit to be transformed by Jest

@@ -10,15 +10,20 @@ const CloseIcon = () => (
 
 const element: HTMLElement = document.getElementById("modal")!;
 
-const Modal = ({ onModalClose, children }: any) => {
-    const mouseDownClose = (e: any) => {
+interface ModalProps {
+    onModalClose: () => void;
+    children: React.ReactNode;
+}
+
+const Modal = ({ onModalClose, children }: ModalProps) => {
+    const mouseDownClose = (e: React.MouseEvent) => {
         if (e.target === e.currentTarget) {
             onModalClose();
         }
     };
 
     useEffect(() => {
-        const keyDownClose = (e: any) => {
+        const keyDownClose = (e: KeyboardEvent) => {
             if (e.code === "Escape") {
                 onModalClose();
             }

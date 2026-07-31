@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Sidebar from "@components/sidebar/Sidebar";
 import MobileHeader from "@components/sidebar/MobileHeader";
-import Loader from "../components/loader/Loader";
+import Loader from "@components/loader/Loader";
 
 const Layout = () => {
     const userName = useSelector((state: any) => state.user.userName);

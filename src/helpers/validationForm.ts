@@ -23,3 +23,6 @@ export const registerSchema = object().shape({
         .required("Password must by required"),
     email: string().email("Invalid email").required("Email must by required"),
 });
+
+const validationForm = { loginSchema, registerSchema };
+export default validationForm;

@@ -38,8 +38,20 @@
       "@redux/*": [
         "src/redux/*"
       ],
-      "@views/*": [
-        "src/views/*"
+      "@services/*": [
+        "src/services/*"
+      ],
+      "@pages/*": [
+        "src/pages/*"
+      ],
+      "@features/*": [
+        "src/features/*"
+      ],
+      "@config/*": [
+        "src/config/*"
+      ],
+      "@images/*": [
+        "src/images/*"
       ]
     },
     "types": [
