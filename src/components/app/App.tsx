@@ -135,15 +135,31 @@ function AppContent() {
             navigate("/home");
         };
 
+        const handleSearchCancelled = (message: any) => {
+            console.log("search_cancelled message:", message);
+            dispatch(resetGameEvents());
+            toast.info("Game search cancelled");
+        };
+
+        const handleSearchCancelledByOpponent = (message: any) => {
+            console.log("search_cancelled_by_opponent message:", message);
+            dispatch(resetGameEvents());
+            toast.info("Opponent cancelled the search");
+        };
+
         const unsubscribeGame = room.onMessage("game", handleGameMessage);
         const unsubscribeGameStart = room.onMessage("gameStart", handleGameStart);
         const unsubscribeSearching = room.onMessage("searching", handleSearching);
+        const unsubscribeSearchCancelled = room.onMessage("search_cancelled", handleSearchCancelled);
+        const unsubscribeSearchCancelledByOpponent = room.onMessage("search_cancelled_by_opponent", handleSearchCancelledByOpponent);
         const unsubscribeGameOver = room.onMessage("gameOver", handleGameOver);
 
         return () => {
             unsubscribeGame();
             unsubscribeGameStart();
             unsubscribeSearching();
+            unsubscribeSearchCancelled();
+            unsubscribeSearchCancelledByOpponent();
             unsubscribeGameOver();
         };
     }, [roomId, dispatch, navigate]);

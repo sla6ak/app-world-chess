@@ -35,7 +35,7 @@ const GameMenu: React.FC<PropTypes> = () => {
             // ignore cancel errors
         }
         dispatch(resetGameEvents());
-        toast.info("Game search cancelled");
+        // Toast is also shown by the backend's search_cancelled WebSocket message
     };
 
     const handleClickSendMessage = async (timeControl: number, timePluse: number) => {
