@@ -11,12 +11,12 @@
 | Среда | URL |
 |-------|-----|
 | Development | `ws://localhost:5000/` |
-| Production | `wss://app-world-chess.vercel.app/` (при деплое) |
+| Production | `wss://app-world-chess.vercel.app/` |
 
 ### Инициализация
 
 ```ts
-// src/colyseus/client.ts
+// src/services/client.ts
 import { Client } from "colyseus.js";
 
 const COLYSEUS_URL = "ws://localhost:5000";
@@ -25,30 +25,14 @@ const client = new Client(COLYSEUS_URL);
 export default client;
 ```
 
-### Подключение к комнате
-
-Подключение инициируется при логине пользователя через Redux thunk `connectToRoom`:
-
-```ts
-// src/redux/roomThunks.ts
-export const connectToRoom = createAsyncThunk(
-    "room/connect",
-    async ({ token, color }, { rejectWithValue }) => {
-        const room = await client.joinOrCreate("chess_room", { token, color });
-        setRoom(room);
-        return { roomId: room.roomId };
-    }
-);
-```
-
-Комната называется `chess_room`. Colyseus автоматически создаёт комнату при `joinOrCreate`, если она ещё не существует.
-
-## Менеджер комнаты
+### Менеджер комнаты
 
 Текущая комната хранится в маппинге (не в Redux) через `roomManager.ts`:
 
 ```ts
-// src/colyseus/roomManager.ts
+// src/services/roomManager.ts
+import type { Room } from "colyseus.js";
+
 let currentRoom: Room | null = null;
 
 export function setRoom(room: Room | null): void {
@@ -62,114 +46,188 @@ export function getRoom(): Room | null {
 
 Это позволяет получать доступ к комнате из любого места приложения без лишних подключений.
 
+## Подключение к комнате
+
+Подключение инициируется при логине пользователя через Redux thunk `connectToRoom`:
+
+```ts
+// src/redux/thunks/roomThunks.ts
+export const connectToRoom = createAsyncThunk<
+    { roomId: string },
+    { token: string; color: string },
+    { state: RootState }
+>(
+    "room/connect",
+    async ({ token, color }, { rejectWithValue }) => {
+        const room = await client.joinOrCreate("chess_room", { token, color });
+        setRoom(room);
+        return { roomId: room.roomId };
+    }
+);
+```
+
+Комната называется `chess_room`. Colyseus автоматически создаёт комнату при `joinOrCreate`, если она ещё не существует.
+
+## Подписка на события комнаты
+
+В `App.tsx` подписываемся на сообщения комнаты после подключения:
+
+```tsx
+// src/app/App.tsx — useEffect для WS-подписок
+
+// Событие "game" — обновление состояния игры
+room.onMessage("game", handleGameMessage);
+
+// Событие "gameStart" — оппонент найден, игра начинается
+room.onMessage("gameStart", handleGameStart);
+
+// Событие "searching" — обновление статуса поиска
+room.onMessage("searching", handleSearching);
+
+// Событие "search_cancelled" — поиск отменён текущим игроком
+room.onMessage("search_cancelled", handleSearchCancelled);
+
+// Событие "search_cancelled_by_opponent" — оппонент отменил поиск
+room.onMessage("search_cancelled_by_opponent", handleSearchCancelledByOpponent);
+
+// Событие "gameOver" — игра завершена
+room.onMessage("gameOver", handleGameOver);
+```
+
+Каждый обработчик обновляет Redux-состояние через соответствующие action creators и при необходимости выполняет навигацию.
+
 ## Протокол сообщений (клиент → сервер)
 
-Все сообщения отправляются через `room.send(message)`. Формат — JSON-объект с полем `event`.
+Все сообщения отправляются через `room.send(event, data)`. Формат — JSON-объект.
 
 ### `startApp` — Подключение / переподключение
 
 Отправляется при подключении к Colyseus комнате. Сервер возвращает текущую активную игру, если она есть.
 
 ```ts
-const msg = {
-    idWs: "<ws_id>",
-    token: "<jwt_token>",
-    event: "startApp",
-    color: "wite", // или "black"
+// src/services/wsMessages.ts
+export const reqWsStartApp = (idWs: string, token: string, color: string) => {
+    return { idWs, token, event: "startApp", color };
 };
-room.send(msg);
 ```
 
-### `startGame` — Начать игру / Найти оппонента
+### `findGame` — Найти оппонента
 
 Отправляется из `GameMenu` при выборе тайм-контроля.
 
 ```ts
-const msg = {
-    idWs: "<ws_id>",
-    token: "<jwt_token>",
-    event: "startGame",
-    color: "wite",
-    typeGame: "standart", // или "fisher"
-    timeControl: 300,     // секунды
-    timePluse: 10,        // секунды за ход
+// src/services/wsMessages.ts
+export const reqWsStartGame = (
+    timeControl: number,
+    timePluse: number,
+    typeGame: string,
+    token: string,
+    idWs: string,
+    color: string
+) => {
+    return { idWs, typeGame, token, color, timeControl, timePluse, event: "findGame" };
 };
-room.send(msg);
 ```
 
-### `cancelSearch` — Отмена поиска
-
-Отправляется, когда игрок закрывает модалку поиска оппонента (кнопка «Cancel», крестик, Escape, клик вне модалки). Включает `gameId` созданной, но не начатой игры — бекенд находит и удаляет её по этому ID.
-
-```ts
-const msg = {
-    event: "cancelSearch",
-    gameId: "64a1b2c3d4e5f6a7b8c9d0e1",
-};
-room.send(msg);
-```
+> **Примечание:** Событие называется `"findGame"`, а не `"startGame"`, так как сервер автоматически рассылает `gameStart` при подключении второго игрока. Сообщение `findGame` используется для передачи параметров поиска и подтверждения готовности.
 
 ### `game` — Отправить ход
 
 Отправляется при совершении хода на доске.
 
 ```ts
-const msg = {
-    idWs: "<ws_id>",
-    event: "game",
-    position: ["rnbqkbnrpppppppp88888888888888888888888888888888PPPPPPPPRNBQKBNR"],
-    move: "e2e4",
+export const reqWsGame = (data: any) => {
+    return { idWs: data.idWs, event: "game" };
 };
-room.send(msg);
+```
+
+### `cancelSearch` — Отмена поиска
+
+Отправляется, когда игрок закрывает модалку поиска оппонента.
+
+```ts
+room.send("cancelSearch", { gameId });
 ```
 
 ## События сервера → клиент
 
-### `mesRes` — Ответ сервера
+### `game` — Обновление состояния игры
 
-Все ответы сервера приходят в событии `mesRes` с полем `message`, определяющим тип ответа.
+Обновление позиции, хода, рейтингов.
 
-| `message` | Описание |
-|-----------|----------|
-| `"ws connect"` | Подтверждение подключения WebSocket |
-| `"game"` | Обновление состояния игры (позиция, ход, рейтинги) |
-| `"startGame"` | Результат поиска оппонента |
+### `gameStart` — Начало игры
 
-### Подписка на события
+Содержит данные о начальной позиции, игроках, рейтингах и таймерах.
 
-В `App.tsx` подписываемся на сообщения комнаты:
+Событие рассылается сервером автоматически при подключении второго игрока к комнате (в Colyseus `onJoin`), либо при получении `findGame` от обоих игроков.
 
-```tsx
-useEffect(() => {
-    const room = getRoom();
-    if (!room) return;
-
-    const handleGameMessage = (message: any) => {
-        console.log("game message:", message);
-        setCurentG(true);
-    };
-
-    room.onMessage("game", handleGameMessage);
-
-    return () => {
-        room.offMessage("game", handleGameMessage);
-    };
-}, [roomId]);
+```ts
+{
+    idGame: string;
+    position: string[];
+    playerWite: string;
+    playerBlack: string;
+    reitingWite: number;
+    reitingBlack: number;
+    timeWite: number;
+    timeBlack: number;
+    move: boolean;           // чей ход
+    message: string;
+    typeGame: string;
+    timeControl: number;
+    timePluse: number;
+}
 ```
+
+При получении `gameStart`:
+1. `dispatch(roomSlice.actions.gameStartSuccess(data))` — сохраняет данные игры в Redux
+2. `dispatch(setGameStart())` — устанавливает статус `"playing"`
+3. `navigate("/game")` — переход на доску
+
+### `searching` — Обновление статуса поиска
+
+```ts
+{
+    searchData: { typeGame: GameType; timeControl: number; timePluse: number }
+}
+```
+
+### `search_cancelled` — Поиск отменён
+
+Сбрасывает `gameEvents` в начальное состояние.
+
+### `search_cancelled_by_opponent` — Оппонент отменил поиск
+
+Аналогично `search_cancelled` с соответствующим toast-уведомлением.
+
+### `gameOver` — Завершение игры
+
+```ts
+{
+    gameOverData: { result: GameResult; ratingChange: number }
+}
+```
+
+При получении `gameOver`:
+1. `dispatch(setGameOver({ result, ratingChange }))` — сохраняет результат
+2. `navigate("/home")` — возврат на главную
+
+## Async Thunks (roomThunks)
+
+| Thunk | Назначение |
+|-------|------------|
+| `connectToRoom` | Подключение к Colyseus комнате `chess_room` |
+| `sendRoomMessage` | Отправка произвольного сообщения в комнату |
+| `findGame` | Отправка `findGame` события для поиска оппонента |
+| `cancelSearch` | Отмена поиска (REST + WS) |
+| `leaveRoom` | Покинуть комнату и очистить состояние |
 
 ## Обработка ошибок
 
-- Ошибки подключения (неверный origin) — логируются на сервере в `logs/ws-errors.log`
-- Ошибки отправки сообщений — обрабатываются в `sendRoomMessage` thunk через `rejectWithValue`
+- Ошибки подключения — обрабатываются в `connectToRoom` через `rejectWithValue`
+- Ошибки отправки сообщений — обрабатываются в `sendRoomMessage` и `findGame` через `rejectWithValue`
 - Потеря соединения — Colyseus автоматически пытается переподключиться
 - При переподключении клиент отправляет `startApp` и получает текущее состояние игры
-
-## Reconnection
-
-Colyseus предоставляет встроенную поддержку переподключения:
-- При автоматическом переподключении клиент получает текущее состояние без повторной синхронизации
-- Сервер ищет активную игру по `userId` и возвращает текущую позицию
-- Клиент продолжает игру с того же места
 
 ## Важные замечания
 

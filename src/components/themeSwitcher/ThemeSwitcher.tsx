@@ -2,6 +2,7 @@ import React from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { setTheme } from "@redux/slices/theme";
 import type { RootState } from "@redux/store";
+import s from "./ThemeSwitcher.module.css";
 
 const themes = [
     { id: "theme-light", label: "Light", color: "#f5f5f5" },
@@ -19,7 +20,7 @@ const ThemeSwitcher = () => {
     };
 
     return (
-        <div className="flex items-center gap-1.5 p-1.5 rounded-full border transition-colors duration-200" style={{ borderColor: "var(--color-border)", backgroundColor: "var(--color-bg-secondary)" }}>
+        <div className={s.wrap}>
             {themes.map((theme) => (
                 <button
                     key={theme.id}
@@ -27,7 +28,7 @@ const ThemeSwitcher = () => {
                     aria-label={`Switch to ${theme.label} theme`}
                     title={theme.label}
                     onClick={() => handleThemeChange(theme.id)}
-                    className={`relative w-6 h-6 rounded-full transition-all duration-200 ${currentTheme === theme.id ? "scale-110 shadow-md" : "opacity-60 hover:opacity-100 hover:scale-105"}`}
+                    className={`${s.dot} ${currentTheme === theme.id ? s.dotActive : ""}`}
                     style={{
                         backgroundColor: theme.color,
                         border: currentTheme === theme.id ? "2px solid var(--color-accent)" : "2px solid var(--color-border)",
@@ -35,7 +36,7 @@ const ThemeSwitcher = () => {
                     }}
                 >
                     {currentTheme === theme.id && (
-                        <svg className="absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--color-accent)" }}>
+                        <svg className={s.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12" />
                         </svg>
                     )}

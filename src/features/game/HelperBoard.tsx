@@ -1,9 +1,10 @@
 import React from "react";
+import s from "./HelperBoard.module.css";
 
 const HelperBoard = () => {
     return (
-        <div className="flex flex-col sm:flex-row w-full flex-grow bg-theme-surface justify-between items-center p-4">
-            <span className="text-sm font-medium" style={{ color: "var(--color-text-secondary)" }}>
+        <div className={s.board}>
+            <span className={s.label} style={{ color: "var(--color-text-secondary)" }}>
                 Helper Board
             </span>
         </div>

@@ -5,6 +5,7 @@ import { newToken } from "@redux/slices/token";
 import { resetUser } from "@redux/slices/user";
 import { toast } from "react-toastify";
 import GeneralButton from "@components/generalButton/GeneralButton";
+import s from "./ModalLogOut.module.css";
 
 const ModalLogOut = ({ onModalClose, onAfterLogout }: any) => {
     const dispatch = useDispatch();
@@ -20,20 +21,20 @@ const ModalLogOut = ({ onModalClose, onAfterLogout }: any) => {
     };
 
     return (
-        <div className="text-center">
-            <h3 className="text-xl font-bold mb-3" style={{ color: "var(--color-text-primary)" }}>
+        <div className={s.root}>
+            <h3 className={s.title} style={{ color: "var(--color-text-primary)" }}>
                 Log Out
             </h3>
-            <p className="text-sm mb-6" style={{ color: "var(--color-text-secondary)" }}>
+            <p className={s.desc} style={{ color: "var(--color-text-secondary)" }}>
                 Are you sure you want to log out?
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <div className="w-full sm:w-[160px]">
+            <div className={s.btns}>
+                <div className={s.btnWrap} style={{ width: 160 }}>
                     <GeneralButton bts={"submit"} onClick={logOut} type="submit">
                         Yes
                     </GeneralButton>
                 </div>
-                <div className="w-full sm:w-[160px]">
+                <div className={s.btnWrap} style={{ width: 160 }}>
                     <GeneralButton bts={"ghost"} onClick={onModalClose} type="button">
                         No
                     </GeneralButton>

@@ -4,6 +4,7 @@ import { useSelector } from "react-redux";
 import Sidebar from "@components/sidebar/Sidebar";
 import MobileHeader from "@components/sidebar/MobileHeader";
 import Loader from "@components/loader/Loader";
+import s from "./Layout.module.css";
 
 const Layout = () => {
     const userName = useSelector((state: any) => state.user.userName);
@@ -11,10 +12,10 @@ const Layout = () => {
 
     return (
         <Suspense fallback={<Loader />}>
-            <div className="flex h-screen flex-col md:flex-row">
+            <div className={s.layout}>
                 {isAuthenticated && <Sidebar />}
                 {isAuthenticated && <MobileHeader />}
-                <main className={`flex-1 h-full overflow-auto ${isAuthenticated ? '' : 'w-full'}`}>
+                <main className={s.main}>
                     <Outlet />
                 </main>
             </div>

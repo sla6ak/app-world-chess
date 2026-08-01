@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { useIsActivTokenQuery } from "@redux/api/authApi";
 import { setUserName, setUserStats } from "@redux/slices/user";
-import { connectToRoom } from "@redux/thunks/roomThunks";
+import { connectToRoom, reconnectToActiveGame } from "@redux/thunks/roomThunks";
 import { roomSlice } from "@redux/slices/room";
 import { setSearchMode, setGameStart, setGameOver, resetGameEvents, GameResult } from "@redux/slices/gameEvents";
 import { getRoom } from "@services/roomManager";
@@ -31,8 +31,10 @@ function AppContent() {
     const roomId = useSelector((state: RootState) => (state as any).room.roomId);
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
+    const location = useLocation();
     const { data: auth } = useIsActivTokenQuery("", { skip: !token });
     const roomRef = useRef<any>(null);
+    const reconnectingRef = useRef(false);
 
     useEffect(() => {
         if (auth === undefined || !auth.user) {
@@ -55,8 +57,57 @@ function AppContent() {
         applyTheme(currentTheme);
     }, [currentTheme]);
 
+    // Перевірка активної гри при вході на сайт або перезавантаженні сторінки
+    useEffect(() => {
+        // Не перевіряємо, якщо вже йде перепідключення, користувач не авторизований,
+        // або вже є активна гра (curentG === true)
+        if (reconnectingRef.current || !auth?.user || curentG) {
+            return;
+        }
+
+        // Якщо roomId вже є в Redux, гра вже підключена
+        if (roomId) {
+            return;
+        }
+
+        reconnectingRef.current = true;
+        console.log("[Reconnect] Checking for active game | pathname:", location.pathname);
+
+        dispatch(reconnectToActiveGame({ token, color }))
+            .unwrap()
+            .then((result) => {
+                reconnectingRef.current = false;
+
+                if (result.status === "matched" && result.game && result.gameId) {
+                    console.log("[Reconnect] ✅ Active game found, reconnecting | gameId:", result.gameId);
+
+                    const gameId = result.gameId!;
+                    const gameData = result.game;
+
+                    // WS кімната вже підключена всередині reconnectToActiveGame
+                    dispatch(roomSlice.actions.connectRoomSuccess({ roomId: gameId }));
+                    dispatch(setSearchMode({
+                        typeGame: gameData.typeGame || "standart",
+                        timeControl: gameData.timeControl || 180,
+                        timePluse: gameData.timePluse || 0,
+                    }));
+                    setCurentG(true);
+                    toast.info("Reconnected to your active game!");
+                } else {
+                    // Немає активної гри — перенаправляємо на /home
+                    console.log("[Reconnect] No active game found, redirecting to /home");
+                    toast.info("No active game found");
+                    navigate("/home");
+                }
+            })
+            .catch((err) => {
+                reconnectingRef.current = false;
+                console.error("[Reconnect] Failed to check for active game:", err);
+            });
+    }, [auth, dispatch, navigate, token, color, curentG, roomId, location.pathname]);
+
     // Підписка на повідомлення комнаты (тільки для ігрового процесу — ходи, завершення)
-    // WS підключення до конкретної кімнати відбувається при пошуку гри
+    // WS підключення до конкретної кімнати відбувається при пошуку гри або перепідключенні
     useEffect(() => {
         const room = roomRef.current || getRoom();
         if (!room) return;

@@ -8,6 +8,7 @@ import { connectRoomSuccess } from "@redux/slices/room";
 import { useAppDispatch } from "@redux/store";
 import type { RootState } from "@redux/store";
 import Modal from "@components/modal/Modal";
+import s from "./GameMenu.module.css";
 import ModalFindGame from "@features/game/ModalFindGame";
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
@@ -29,14 +30,7 @@ const GameMenu: React.FC<PropTypes> = () => {
         setTypeGame((prev) => (prev === "standart" ? "fisher" : "standart"));
     };
 
-    /**
-     * Почати пошук гри через REST.
-     * 1. Створюємо гру через REST (POST /game/find)
-     * 2. Якщо matched — одразу підключаємось до WS кімнати
-     * 3. Якщо waiting — підключаємось до WS кімнати і чекаємо gameStart через WS push
-     */
     const handleStartSearch = async (timeControl: number, timePluse: number) => {
-        // Скасовуємо будь-який активний пошук перед новим
         if (isSearching && searchGameId) {
             await dispatch(cancelSearch(searchGameId)).unwrap();
             dispatch(resetGameEvents());
@@ -44,7 +38,6 @@ const GameMenu: React.FC<PropTypes> = () => {
 
         setCreatingRoom(true);
         try {
-            // Крок 1: REST — створюємо пошук гри
             const result = await dispatch(
                 startSearch({ typeGame, timeControl, timePluse })
             ).unwrap();
@@ -52,9 +45,8 @@ const GameMenu: React.FC<PropTypes> = () => {
             setCreatingRoom(false);
 
             if (result.status === "matched" && result.game) {
-                // Гру знайдено суперника — підключаємось до WS кімнати
                 const gameId = result.game._id;
-                console.log("[GameMenu] 🎯 Matched immediately! gameId:", gameId);
+                console.log("[GameMenu] Matched immediately! gameId:", gameId);
                 dispatch(setSearchGameId(gameId));
                 dispatch(connectToRoom({ token, color, gameId }))
                     .unwrap()
@@ -68,12 +60,9 @@ const GameMenu: React.FC<PropTypes> = () => {
                         dispatch(resetGameEvents());
                     });
             } else if (result.status === "waiting" && result.gameId) {
-                // Чекаємо на суперника — підключаємось до WS кімнати і чекаємо gameStart через WS push
                 const gameId = result.gameId;
-                console.log("[GameMenu] ⏳ Waiting for opponent, gameId:", gameId);
+                console.log("[GameMenu] Waiting for opponent, gameId:", gameId);
                 dispatch(setSearchGameId(gameId));
-
-                // Підключаємось до WS кімнати одразу — сервер pushить gameStart коли обидва гравці в кімнаті
                 dispatch(connectToRoom({ token, color, gameId }))
                     .unwrap()
                     .then(() => {
@@ -86,7 +75,6 @@ const GameMenu: React.FC<PropTypes> = () => {
                         dispatch(resetGameEvents());
                     });
             } else {
-                // Невідома відповідь
                 toast.error("Unexpected response from server");
                 dispatch(resetGameEvents());
             }
@@ -121,21 +109,21 @@ const GameMenu: React.FC<PropTypes> = () => {
     ];
 
     return (
-        <div className="h-full flex flex-col bg-theme-primary">
+        <div className={s.menu}>
             {/* Header */}
-            <header className="max-w-5xl mx-auto w-full px-4 pt-6 pb-2 md:px-8 md:pt-8">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <header className={s.header}>
+                <div className={s.headerRow}>
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold font-poppins tracking-tight" style={{ color: "var(--color-text-primary)" }}>
+                        <h1 className={s.title} style={{ color: "var(--color-text-primary)" }}>
                             New Game
                         </h1>
-                        <p className="text-sm mt-1" style={{ color: "var(--color-text-secondary)" }}>
+                        <p className={s.sub} style={{ color: "var(--color-text-secondary)" }}>
                             Choose a time control to start playing
                         </p>
                     </div>
                     <button
                         onClick={gameRegim}
-                        className="self-start sm:self-auto px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_0_rgba(0,0,0,0.3),0_6px_12px_rgba(0,0,0,0.2)] active:translate-y-0.5 active:shadow-[0_2px_4px_rgba(0,0,0,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent"
+                        className={s.btn}
                         style={{
                             backgroundColor: "var(--color-accent-subtle)",
                             color: "var(--color-accent)",
@@ -143,20 +131,20 @@ const GameMenu: React.FC<PropTypes> = () => {
                             boxShadow: "0 3px 0 rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.15)",
                         }}
                     >
-                        <span className="hidden sm:inline">Regim:</span> {typeGame}
+                        <span className={s.btnLabel}>Regim:</span> {typeGame}
                     </button>
                 </div>
             </header>
 
             {/* Time controls grid */}
-            <div className="flex-1 min-h-0 max-w-5xl mx-auto w-full px-4 md:px-8 pb-6">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 h-full">
+            <div className={s.body}>
+                <div className={s.grid}>
                     {timeControls.map(({ tc, tp, label }) => (
                         <button
                             key={`${tc}-${tp}`}
                             onClick={() => handleStartSearch(tc, tp)}
                             disabled={creatingRoom || isSearching}
-                            className="group relative flex flex-col items-center justify-center w-full rounded-xl font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(102,53,23,0.35)] active:translate-y-0.5 active:shadow-[0_2px_6px_rgba(102,53,23,0.2)] disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-accent overflow-hidden"
+                            className={s.card}
                             style={{
                                 backgroundColor: "rgba(102, 53, 23, 0.85)",
                                 color: "var(--color-text-on-accent)",
@@ -166,16 +154,16 @@ const GameMenu: React.FC<PropTypes> = () => {
                             }}
                         >
                             {/* Cube top face highlight */}
-                            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-t-xl" />
+                            <div className={s.cardTop} style={{ height: '50%', backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)', opacity: 0, transition: 'opacity 200ms ease', borderTopLeftRadius: 'inherit', borderTopRightRadius: 'inherit' }} />
                             {/* Subtle shine effect on hover */}
-                            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                            <span className="relative text-2xl font-bold leading-none">{tc}</span>
+                            <div className={s.cardShine} style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.1), transparent)', opacity: 0, transition: 'opacity 200ms ease' }} />
+                            <span className={s.cardIcon}>{tc}</span>
                             {tp > 0 && (
-                                <span className="relative text-[10px] mt-0.5 opacity-80">
+                                <span className={s.cardSub}>
                                     +{tp}s
                                 </span>
                             )}
-                            <span className="relative text-[9px] mt-1 opacity-60 group-hover:opacity-100 transition-opacity hidden lg:block">
+                            <span className={s.cardLabel}>
                                 {label}
                             </span>
                         </button>

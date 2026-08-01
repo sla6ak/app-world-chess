@@ -4,6 +4,7 @@ import UserMenu from "@components/userMenu/UserMenu";
 import ThemeSwitcher from "@components/themeSwitcher/ThemeSwitcher";
 import Modal from "@components/modal/Modal";
 import ModalLogOut from "@features/auth/ModalLogOut";
+import s from "./MobileHeader.module.css";
 
 const MobileHeader = () => {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -12,29 +13,29 @@ const MobileHeader = () => {
     return (
         <>
             {/* Top header bar */}
-            <header className="flex items-center justify-between px-4 py-2 bg-theme-secondary border-b border-theme-border/60 md:hidden shadow-md">
+            <header className={s.header}>
                 {/* Brand */}
                 <NavLink
                     to="/home"
-                    className="flex items-center gap-2 no-underline"
+                    className={s.logo}
                     style={{ color: "var(--color-text-primary)" }}
                     onClick={() => setMenuOpen(false)}
                 >
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-green flex items-center justify-center shadow-md">
+                    <div className={s.logoIcon} style={{ backgroundImage: 'linear-gradient(to bottom right, var(--color-accent), var(--color-green))' }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="none">
                             <path d="M12 2L2 7l10 5 10-5-10-5z" />
                             <path d="M2 17l10 5 10-5" />
                             <path d="M2 12l10 5 10-5" />
                         </svg>
                     </div>
-                    <span className="text-lg font-bold font-poppins tracking-tight">Chess-World</span>
+                    <span className={s.brand}>Chess-World</span>
                 </NavLink>
 
                 {/* Burger menu button */}
                 <button
                     type="button"
                     onClick={() => setMenuOpen(true)}
-                    className="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-theme-hover transition-colors"
+                    className={s.menuBtn}
                     aria-label="Open menu"
                 >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--color-text-primary)" }}>
@@ -45,7 +46,7 @@ const MobileHeader = () => {
                 </button>
             </header>
 
-            {/* Slide-out panel from right */}
+            {/* Logout modal */}
             {showLogoutModal && (
                 <Modal onModalClose={() => setShowLogoutModal(false)}>
                     <ModalLogOut
@@ -55,26 +56,27 @@ const MobileHeader = () => {
                 </Modal>
             )}
 
+            {/* Slide-out panel */}
             {menuOpen && (
-                <div className="fixed inset-0 z-50 md:hidden" onClick={() => setMenuOpen(false)}>
+                <div className={s.overlay} onClick={() => setMenuOpen(false)}>
                     {/* Backdrop */}
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity" />
+                    <div className={s.overlayBg} />
 
-                    {/* Slide-out panel */}
+                    {/* Panel */}
                     <aside
-                        className="absolute right-0 top-0 h-full w-72 bg-theme-secondary shadow-2xl flex flex-col border-l border-theme-border/60 transform transition-transform duration-300 ease-out"
+                        className={s.panel}
                         onClick={(e) => e.stopPropagation()}
                         aria-label="Mobile navigation"
                     >
                         {/* Panel header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-theme-border/40">
-                            <span className="text-sm font-semibold" style={{ color: "var(--color-text-secondary)" }}>
+                        <div className={s.panelHead}>
+                            <span className={s.menuLabel} style={{ color: "var(--color-text-secondary)" }}>
                                 Menu
                             </span>
                             <button
                                 type="button"
                                 onClick={() => setMenuOpen(false)}
-                                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-theme-hover transition-colors"
+                                className={s.menuBtn}
                                 aria-label="Close menu"
                             >
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--color-text-secondary)" }}>
@@ -85,24 +87,19 @@ const MobileHeader = () => {
                         </div>
 
                         {/* User & Theme */}
-                        <div className="flex flex-col items-center gap-3 px-4 py-4 border-b border-theme-border/40">
+                        <div className={s.userSection}>
                             <UserMenu />
                             <ThemeSwitcher />
                         </div>
 
                         {/* Navigation */}
-                        <nav className="flex-1 px-3 py-4 space-y-1 overflow-auto">
+                        <nav className={s.panelNav}>
                             <NavLink
                                 to="/home"
                                 end
                                 onClick={() => setMenuOpen(false)}
-                                className={({ isActive }) =>
-                                    `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                                        isActive
-                                            ? "bg-accent/10 text-accent border border-accent/20"
-                                            : "text-theme-secondary hover:bg-theme-hover hover:text-theme-primary"
-                                    }`
-                                }
+                                className={({ isActive }) => `${s.panelLink} ${isActive ? s.panelLinkActive : ''}`}
+                                style={({ isActive }) => isActive ? {} : { color: 'var(--color-text-secondary)' }}
                             >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="3" y="3" width="7" height="7" />
@@ -115,13 +112,8 @@ const MobileHeader = () => {
                             <NavLink
                                 to="/statistic"
                                 onClick={() => setMenuOpen(false)}
-                                className={({ isActive }) =>
-                                    `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                                        isActive
-                                            ? "bg-accent/10 text-accent border border-accent/20"
-                                            : "text-theme-secondary hover:bg-theme-hover hover:text-theme-primary"
-                                    }`
-                                }
+                                className={({ isActive }) => `${s.panelLink} ${isActive ? s.panelLinkActive : ''}`}
+                                style={({ isActive }) => isActive ? {} : { color: 'var(--color-text-secondary)' }}
                             >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="18" y1="20" x2="18" y2="10" />
@@ -138,7 +130,10 @@ const MobileHeader = () => {
                                     setMenuOpen(false);
                                     setShowLogoutModal(true);
                                 }}
-                                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 text-red-400 hover:bg-red-500/10 hover:text-red-300 w-full"
+                                className={`${s.panelLink} ${s.panelLinkDanger}`}
+                                style={{ color: '#ef4444' }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />

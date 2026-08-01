@@ -1,0 +1,40 @@
+.board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  background-color: var(--color-bg-primary);
+}
+
+@media (min-width: 768px) {
+  .board {
+    flex-direction: row;
+    overflow: hidden;
+  }
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  max-width: min(90vw, 90vh);
+  aspect-ratio: 1 / 1;
+  border-style: solid;
+}
+
+.cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-style: solid;
+  width: 12.8%;
+  height: 12.8%;
+}
+
+.piece {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}

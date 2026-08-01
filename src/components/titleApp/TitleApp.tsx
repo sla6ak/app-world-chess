@@ -1,9 +1,10 @@
 import React from "react";
+import s from "./TitleApp.module.css";
 
 const TitleApp = () => {
     return (
-        <div className="flex items-center h-10">
-            <h1 className="flex items-center m-0 font-bold font-poppins text-xl leading-[1.46] md:text-[30px] md:leading-[1.5]">
+        <div className={s.root}>
+            <h1 className={s.title} style={{ fontSize: 'clamp(1.25rem, 3vw, 1.875rem)', lineHeight: 1.5 }}>
                 Chess-World
             </h1>
         </div>

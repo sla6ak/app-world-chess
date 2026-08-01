@@ -68,7 +68,13 @@ export const authApi = createApi({
             }),
             invalidatesTags: ["user"],
         }),
-
+        getActiveGame: builder.query({
+            query: () => ({
+                url: `/game/active`,
+                method: "GET",
+            }),
+            providesTags: ["user"],
+        }),
     }),
 });
 
@@ -80,6 +86,7 @@ export const {
     useUnLoginUserMutation,
     useCreateSearchRoomMutation,
     useCancelSearchRoomMutation,
+    useGetActiveGameQuery,
 } = authApi;
 
 export default authApi;

@@ -155,11 +155,56 @@ export const sendGameOver = createAsyncThunk<
     }
 );
 
+/**
+ * reconnectToActiveGame — перевіряє, чи є у користувача активна (не завершена) гра,
+ * і підключається до неї через WebSocket.
+ *
+ * Використовується для відновлення гри після перезавантаження сторінки.
+ */
+export const reconnectToActiveGame = createAsyncThunk<
+    { status: string; game?: any; gameId?: string },
+    { token: string; color: string },
+    { state: RootState }
+>(
+    "room/reconnectToActiveGame",
+    async ({ token, color }, { dispatch, rejectWithValue }) => {
+        try {
+            console.log("[WS] Checking for active game to reconnect...");
+
+            const result = await dispatch(
+                authApi.endpoints.getActiveGame.initiate({})
+            ).unwrap();
+
+            console.log("[WS] Active game check result | status:", result.status);
+
+            if (result.status === "matched" && result.game) {
+                const gameId = result.game._id;
+                console.log("[WS] Active game found | gameId:", gameId);
+
+                // Підключаємось до WS кімнати з gameId
+                await dispatch(
+                    connectToRoom({ token, color, gameId })
+                ).unwrap();
+
+                console.log("[WS] Reconnected to room for active game | gameId:", gameId);
+                return { status: "matched", game: result.game, gameId };
+            }
+
+            console.log("[WS] No active game found, status:", result.status);
+            return { status: result.status };
+        } catch (error: unknown) {
+            console.error("[WS] Failed to reconnect to active game:", error);
+            return rejectWithValue(error instanceof Error ? error.message : "Failed to reconnect");
+        }
+    }
+);
+
 const roomThunks = {
     startSearch,
     cancelSearch,
     connectToRoom,
     sendGameMove,
     sendGameOver,
+    reconnectToActiveGame,
 };
 export default roomThunks;

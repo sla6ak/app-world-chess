@@ -1,24 +1,59 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { useSelector } from "react-redux";
 import HelperBoard from "@features/game/HelperBoard";
 import showFigure from "@helpers/showFigure";
+import { getRoom } from "@services/roomManager";
+import type { RootState } from "@redux/store";
+import s from "./GameBoard.module.css";
 
 const GameBoard: React.FC = () => {
-    const [board, setBoard] = useState([{ _id: 1, figure: "" }]);
-    const [activFigure, setActivFigure] = useState({ _id: 1, figure: "" });
     const startPosition = "rnbqkbnrpppppppp88888888888888888888888888888888PPPPPPPPRNBQKBNR";
+    const gameData = useSelector((state: RootState) => (state as any).room.gameData);
+    const roomId = useSelector((state: RootState) => (state as any).room.roomId);
+    const [board, setBoard] = useState<any[]>([]);
+    const [activFigure, setActivFigure] = useState({ _id: 1, figure: "" });
+    const boardRef = useRef<any[]>([]);
+
+    const initializeBoard = (position: string[]) => {
+        const pos = position && position.length > 0 ? position[0] : startPosition;
+        const startPositionArr = pos.split("");
+        const boardEmpty: any = [];
+        for (let cord = 0; cord < 64; cord++) {
+            boardEmpty.push({ _id: cord, figure: startPositionArr[cord] });
+        }
+        boardRef.current = boardEmpty;
+        setBoard(boardEmpty);
+    };
 
     useEffect(() => {
-        const startPositionArr = startPosition.split("");
-        const boardEmpty: any = [];
-        const createSquare = () => {
-            for (let cord = 0; cord < 64; cord++) {
-                boardEmpty.push({ _id: cord, figure: startPositionArr[cord] });
-            }
-            setBoard(boardEmpty);
-        };
-        createSquare();
+        initializeBoard(gameData?.position);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Sync board with Redux gameData changes (e.g., after reconnection)
+    useEffect(() => {
+        if (gameData?.position && gameData.position.length > 0) {
+            initializeBoard(gameData.position);
+        }
+    }, [gameData]);
+
+    // Listen for WS 'game' messages to sync board position
+    useEffect(() => {
+        const room = getRoom();
+        if (!room) return;
+
+        const handleGame = (message: unknown) => {
+            const msg = message as { position?: string[]; move?: boolean };
+            if (msg.position) {
+                initializeBoard(msg.position);
+            }
+        };
+
+        const unsubscribe = room.onMessage("game", handleGame);
+        return () => {
+            unsubscribe();
+        };
+    }, [roomId]);
 
     const eventHandler = (e: MouseEvent, index: number) => {
         if (activFigure.figure === "" || activFigure.figure === "8") {
@@ -40,17 +75,17 @@ const GameBoard: React.FC = () => {
         justifyContent: "center",
         alignItems: "center",
         border: "1px solid var(--color-border)",
-        width: "12.5%",
-        height: "12.5%",
+        width: "12.8%",
+        height: "12.8%",
         backgroundColor: color === "black" ? "var(--color-bg-board-dark)" : "var(--color-bg-board)",
         color: color === "black" ? "var(--color-bg-board)" : "var(--color-text-primary)",
     });
 
     return (
-        <div className="flex flex-col items-center flex-grow bg-theme-primary md:flex-row md:overflow-hidden">
+        <div className={s.board}>
             {/* Chess board */}
             <div
-                className="chess-board flex flex-wrap justify-center items-center w-full max-w-[min(90vw,90vh)] aspect-square border-solid"
+                className={s.inner}
                 style={{
                     backgroundColor: "var(--color-bg-board)",
                     borderWidth: "10px",
@@ -62,7 +97,7 @@ const GameBoard: React.FC = () => {
                     return (
                         <div
                             key={index}
-                            className="flex justify-center items-center border-solid w-[12.5%] h-[12.5%] square"
+                            className={s.cell}
                             style={{
                                 backgroundColor: clr === "black" ? "var(--color-bg-board-dark)" : "var(--color-bg-board)",
                                 borderWidth: "1px",
@@ -70,7 +105,7 @@ const GameBoard: React.FC = () => {
                             }}
                             onClick={(e: any) => eventHandler(e, index)}
                         >
-                            <img src={showFigure(index, element.figure)} alt="" className="w-[80%] h-[80%] object-contain" />
+                            <img src={showFigure(index, element.figure)} alt="" className={s.piece} style={{ width: '80%', height: '80%' }} />
                         </div>
                     );
                 })}

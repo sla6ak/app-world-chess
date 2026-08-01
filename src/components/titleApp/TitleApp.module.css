@@ -1,0 +1,22 @@
+.root {
+  display: flex;
+  align-items: center;
+  height: 2.5rem;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  font-size: 1.25rem;
+  line-height: 1.46;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 1.875rem;
+    line-height: 1.5;
+  }
+}

@@ -7,145 +7,152 @@
 ## Слои приложения
 
 ```
-┌─────────────────────────────────────────┐
-│           UI Components                 │  ← React компоненты (TSX)
-│  ┌─────────────────────────────────┐    │
-│  │     Pages (Route components)    │    │
-│  │  DashboardPage, HomeTab,        │    │
-│  │  GameBoard, Statistics,         │    │
-│  │  LoginPage, RegisterPage        │    │
-│  └─────────────────────────────────┘    │
-│  ┌─────────────────────────────────┐    │
-│  │   Shared/Reusable Components    │    │
-│  │  Layout, Sidebar, GameMenu,     │    │
-│  │  Modal, ThemeSwitcher, etc.     │    │
-│  └─────────────────────────────────┘    │
-├─────────────────────────────────────────┤
-│           State Management              │  ← Redux Toolkit
-│  ┌─────────────────────────────────┐    │
-│  │  Redux Store                    │    │
-│  │  ├─ authApi (RTK Query)        │    │
-│  │  ├─ token, userName, colorGame │    │
-│  │  ├─ theme, room, WsID          │    │
-│  │  └─ persist (token, theme,     │    │
-│  │     colorGame)                  │    │
-│  └─────────────────────────────────┘    │
-├─────────────────────────────────────────┤
-│           Communication                 │  ← HTTP + WebSocket
-│  ┌─────────────────────────────────┐    │
-│  │  REST API (RTK Query)          │    │
-│  │  └─ authApi → /auth/*          │    │
-│  ├─────────────────────────────────┤    │
-│  │  WebSocket (Colyseus.js)        │    │
-│  │  └─ client → ws://localhost:5000│   │
-│  │  └─ room → chess_room          │    │
-│  └─────────────────────────────────┘    │
-├─────────────────────────────────────────┤
-│           Helpers & Utilities           │
-│  ┌─────────────────────────────────┐    │
-│  │  theme.ts, validationForm.ts,   │    │
-│  │  requestWs.ts, showFigure.ts    │    │
-│  └─────────────────────────────────┘    │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│              UI Layer                        │
+│  ┌───────────────────────────────────────┐  │
+│  │  Pages (lazy-loaded route components) │  │
+│  │  DashboardPage, LoginPage,            │  │
+│  │  RegisterPage, HomeTab, GameBoard,    │  │
+│  │  Statistics                            │  │
+│  └───────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────┐  │
+│  │  Feature Components                   │  │
+│  │  GameMenu, GameBoard, HelperBoard,    │  │
+│  │  ModalFindGame, LoginForm,            │  │
+│  │  RegisterForm, BackgroundPage         │  │
+│  └───────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────┐  │
+│  │  Shared / Reusable Components         │  │
+│  │  Layout, Sidebar, MobileHeader,       │  │
+│  │  Modal, ThemeSwitcher, UserMenu,      │  │
+│  │  GeneralButton, Loader, TitleApp,     │  │
+│  │  PrivateRoute, PublicRoute            │  │
+│  └───────────────────────────────────────┘  │
+├─────────────────────────────────────────────┤
+│              State Layer                     │
+│  ┌───────────────────────────────────────┐  │
+│  │  Redux Toolkit Store                  │  │
+│  │  ├─ authApi (RTK Query)             │  │
+│  │  ├─ token, user, colorGame           │  │
+│  │  ├─ theme, room, gameEvents, wsID    │  │
+│  │  └─ persist (token, wsId)            │  │
+│  └───────────────────────────────────────┘  │
+├─────────────────────────────────────────────┤
+│              Communication Layer             │
+│  ┌───────────────────────────────────────┐  │
+│  │  REST API (RTK Query → authApi)      │  │
+│  │  └─ /auth/signup, /auth/login,       │  │
+│  │     /auth/current, /auth/logout,      │  │
+│  │     /game/find, /game/cancel          │  │
+│  ├───────────────────────────────────────┤  │
+│  │  WebSocket (Colyseus.js)              │  │
+│  │  └─ client → ws://localhost:5000/     │  │
+│  │  └─ room → chess_room                 │  │
+│  └───────────────────────────────────────┘  │
+├─────────────────────────────────────────────┤
+│              Helpers & Utilities             │
+│  ┌───────────────────────────────────────┐  │
+│  │  showFigure.ts — SVG-фигуры для доски│  │
+│  │  theme.ts — применение тем            │  │
+│  │  validationForm.ts — схемы Yup        │  │
+│  │  wsMessages.ts — фабрики WS-сообщений│  │
+│  └───────────────────────────────────────┘  │
+└─────────────────────────────────────────────┘
+```
+
+## Поток данных
+
+### Авторизация
+
+```
+LoginForm → formik + yup validation → authApi.loginUser → Redux (token, user)
+                                                              ↓
+                                              useIsActivTokenQuery (auto-refetch)
+                                                              ↓
+                                          setUserName + setUserStats → Layout renders
+```
+
+### Подключение к комнате
+
+```
+App.tsx (useEffect on userName+token+roomId)
+  → dispatch(connectToRoom({ token, color }))
+    → client.joinOrCreate("chess_room", { token, color })
+      → setRoom(room) in roomManager (in-memory map)
+      → dispatch(connectRoomSuccess({ roomId }))
+        → App subscribes to room messages
+```
+
+### Поиск игры
+
+```
+GameMenu → handleClickSendMessage(timeControl, timePluse)
+  → dispatch(createSearchRoom REST) → get gameId
+    → dispatch(setSearchGameId(gameId))
+  → dispatch(findGame({ token, color, typeGame, timeControl, timePluse }))
+    → room.send("findGame", { ... })
+      → Server broadcasts "searching" → Redux setSearchMode
+      → Server broadcasts "gameStart" → Redux setGameStart + navigate("/game")
+      → Server broadcasts "search_cancelled" → Redux resetGameEvents
+```
+
+### Игровой процесс
+
+```
+GameBoard → user clicks square → select/move figure
+  → room.send("game", { position, move })
+    → Server validates move, updates state, broadcasts to all clients
+      → Client receives "game" event → updates board state
+```
+
+### Завершение игры
+
+```
+Server broadcasts "gameOver"
+  → App handles gameOver message
+    → dispatch(setGameOver({ result, ratingChange }))
+    → navigate("/home")
 ```
 
 ## Маршрутизация
 
-Маршрутизация осуществляется через `react-router-dom` v6 с `BrowserRouter` и `basename={PUBLIC_URL + "/"}`.
-
-### Структура роутов
+Маршрутизация через `react-router-dom` v6 с `BrowserRouter` и `basename={PUBLIC_URL + "/"}`.
 
 ```
-/ (Layout)
-├── /                  → DashboardPage (редирект на /home или /game)
-├── /home              → HomeTab (выбор режима игры)
-├── /statistic         → Statistics (статистика игрока)
-├── /game              → GameBoard (интерактивная доска)
-├── /login             → LoginPage (публичный)
-└── /register          → RegisterPage (публичный)
+<BrowserRouter basename={PUBLIC_URL + "/"}>
+  <Routes>
+    <Route path="/" element={<Layout />}>                    ← PrivateRoute wrapper
+      <Route index element={<DashboardPage />} />            ← Redirect logic
+      <Route path="/home" element={<HomeTab />} />           ← Game selection
+      <Route path="/statistic" element={<Statistics />} />   ← Stats (stub)
+      <Route path="/game" element={<GameBoard />} />         ← Chess board
+    </Route>
+    <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+    <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+    <Route path="*" element={<Navigate to="/" />} />
+  </Routes>
+</BrowserRouter>
 ```
 
-### Защита маршрутов
+## Защита маршрутов
 
-- **PrivateRoute** — проверяет наличие `userName` в Redux. Если пусто — редирект на `/login`
-- **PublicRoute** — позволяет доступ только неавторизованным пользователям
+| Компонент | Проверка | Поведение при неавторизации |
+|------------|----------|----------------------------|
+| `PrivateRoute` | `userName.length > 0` | Редирект на `/login` |
+| `PublicRoute` | `userName.length === 0` | Редирект на `/` |
 
-## Управление состоянием
+## Персистенция
 
-### Redux Store
-
-Центральное хранилище настраивается в `src/redux/store.ts` с использованием `configureStore` из Redux Toolkit.
-
-**Persist-конфигурация:**
-- `whitelist: ["token", "colorGame", "theme"]` — эти данные сохраняются в `localStorage`
-- `redux-persist` восстанавливает состояние при перезагрузке страницы
-
-### Слайсы
-
-| Слайс | Состояние | Назначение |
-|-------|-----------|------------|
-| `token` | `string` | JWT-токен авторизации |
-| `userName` | `string` | Имя текущего пользователя |
-| `colorGame` | `"wite" \| "black"` | Выбранная сторона игрока |
-| `theme` | `string` | Текущая тема (CSS-класс) |
-| `room` | `{ roomId, connected, connecting, error }` | Состояние Colyseus комнаты |
-| `WsID` | `string` | WebSocket ID клиента |
-
-### RTK Query (`authApi`)
-
-Все REST-запросы к бэкенду инкапсулированы в `authApi`:
-
-| Endpoint | Метод | URL | Назначение |
-|----------|-------|-----|------------|
-| `registrationUser` | POST | `/auth/signup` | Регистрация |
-| `loginUser` | POST | `/auth/login` | Авторизация |
-| `emailVerify` | PATCH | `/auth/login/:token` | Подтверждение email |
-| `unLoginUser` | POST | `/auth/logout` | Выход |
-| `isActivToken` | GET | `/auth/current` | Проверка актуальности токена |
-
-### Async Thunks (`roomThunks`)
-
-Для WebSocket-операций используются async thunks:
-
-| Thunk | Назначение |
-|-------|------------|
-| `connectToRoom` | Подключение к Colyseus комнате `chess_room` |
-| `sendRoomMessage` | Отправка сообщения в комнату |
-| `leaveRoom` | Покинуть комнату |
-
-## WebSocket-коммуникация
-
-### Подключение
-
-```
-ws://localhost:5000/
+**Persist config** (`src/redux/store.ts`):
+```ts
+whitelist: ["token", "wsId"]
 ```
 
-Клиент использует `colyseus.js` SDK (`src/colyseus/client.ts`). Подключение инициируется при логине через `connectToRoom` thunk.
+Данные, сохраняемые в `localStorage` между сессиями:
 
-### Протокол сообщений (клиент → сервер)
+| Ключ | Данные | Назначение |
+|------|--------|------------|
+| `token` | JWT-токен | Автоматическая авторизация при перезагрузке |
+| `wsId` | WebSocket ID | Идентификация клиента при переподключении |
 
-Все сообщения — JSON-объекты с полем `event`.
-
-| Событие | Описание | Поля |
-|---------|----------|------|
-| `startApp` | Подключение/переподключение | `token`, `color`, `idWs` |
-| `startGame` | Начать игру / искать оппонента | `token`, `color`, `typeGame`, `timeControl`, `timePluse`, `idWs` |
-| `game` | Отправить ход | `idWs`, `event: "game"`, позиция |
-
-### События сервера → клиент
-
-| Событие | Описание |
-|---------|----------|
-| `mesRes` | Ответ сервера на `startApp` / `startGame` / `game` |
-
-Подробный протокол описан в `docs/WEBSOCKET.md`.
-
-## Тема и стилизация
-
-- **CSS Custom Properties** — все цвета определены в `src/styles/themes.css`
-- **Tailwind CSS** — утилитарный CSS, настроен через `tailwind.config.js`
-- **Темы** — переключение через замену класса на `<html>` элементе
-- **Dark mode** — поддержка через `darkMode: 'class'` в Tailwind
-
-Подробнее: `docs/THEMING.md`
+При перезагрузке `redux-persist` восстанавливает эти данные, `useIsActivTokenQuery` проверяет токен и восстанавливает имя пользователя и статистику.

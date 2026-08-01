@@ -6,6 +6,7 @@ import { useRegistrationUserMutation } from "@redux/api/authApi";
 import { registerSchema } from "@helpers/validationForm";
 import GeneralButton from "@components/generalButton/GeneralButton";
 import TitleApp from "@components/titleApp/TitleApp";
+import s from "./RegisterForm.module.css";
 
 const MailIcon = () => (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -86,24 +87,24 @@ const RegisterForm = () => {
     });
 
     return (
-        <div className="relative z-30 flex flex-col justify-center items-center w-full max-w-md mx-auto px-4 py-10 md:px-8 md:py-12 md:mx-auto md:rounded-2xl md:shadow-2xl bg-theme-secondary border border-theme-border/50">
+        <div className={s.card} style={{ borderColor: 'rgba(102,53,23,0.5)' }}>
             {/* Decorative top accent bar */}
-            <div className="absolute top-0 left-0 right-0 h-1 rounded-t-2xl bg-gradient-to-r from-accent via-green to-purpure opacity-60" />
+            <div className={s.gradient} style={{ backgroundImage: 'linear-gradient(to right, var(--color-accent), var(--color-green), var(--color-purple))' }} />
 
             <TitleApp />
 
-            <p className="text-sm mt-3 mb-8 text-theme-secondary text-center max-w-[320px]">
+            <p className={s.desc} style={{ maxWidth: 320 }}>
                 Create your account and start playing
             </p>
 
-            <form onSubmit={formik.handleSubmit} className="w-full max-w-[410px]">
+            <form onSubmit={formik.handleSubmit} className={s.form}>
                 {/* First Name */}
-                <div className="mb-5">
-                    <label htmlFor="firstName" className="block text-sm font-medium mb-2 text-theme-secondary">
+                <div className={s.field}>
+                    <label htmlFor="firstName" className={s.label}>
                         {formik.touched.firstName && formik.errors.firstName ? formik.errors.firstName : "First Name"}
                     </label>
-                    <div className="relative flex items-center group">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200 text-theme-muted group-focus-within:text-accent">
+                    <div className={s.inputWrap}>
+                        <span className={s.inputIcon}>
                             <AccountIcon />
                         </span>
                         <input
@@ -113,18 +114,19 @@ const RegisterForm = () => {
                             onChange={formik.handleChange}
                             value={formik.values.firstName}
                             placeholder="Your name"
-                            className="input pl-10 hover:border-accent/50"
+                            className={`${s.input} ${s.inputPl}`}
+                            style={{ borderColor: 'rgba(102,53,23,0.3)' }}
                         />
                     </div>
                 </div>
 
                 {/* Email */}
-                <div className="mb-5">
-                    <label htmlFor="email" className="block text-sm font-medium mb-2 text-theme-secondary">
+                <div className={s.field}>
+                    <label htmlFor="email" className={s.label}>
                         {formik.touched.email && formik.errors.email ? formik.errors.email : "Email Address"}
                     </label>
-                    <div className="relative flex items-center group">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200 text-theme-muted group-focus-within:text-accent">
+                    <div className={s.inputWrap}>
+                        <span className={s.inputIcon}>
                             <MailIcon />
                         </span>
                         <input
@@ -135,18 +137,19 @@ const RegisterForm = () => {
                             value={formik.values.email}
                             placeholder="you@example.com"
                             required
-                            className="input pl-10 hover:border-accent/50"
+                            className={`${s.input} ${s.inputPl}`}
+                            style={{ borderColor: 'rgba(102,53,23,0.3)' }}
                         />
                     </div>
                 </div>
 
                 {/* Password */}
-                <div className="mb-5">
-                    <label htmlFor="password" className="block text-sm font-medium mb-2 text-theme-secondary">
+                <div className={s.field}>
+                    <label htmlFor="password" className={s.label}>
                         {formik.touched.password && formik.errors.password ? formik.errors.password : "Password"}
                     </label>
-                    <div className="relative flex items-center group">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200 text-theme-muted group-focus-within:text-accent">
+                    <div className={s.inputWrap}>
+                        <span className={s.inputIcon}>
                             <LockIcon />
                         </span>
                         <input
@@ -157,13 +160,15 @@ const RegisterForm = () => {
                             value={formik.values.password}
                             placeholder="••••••••"
                             required
-                            className="input pl-10 pr-12 hover:border-accent/50"
+                            className={`${s.input} ${s.inputPr}`}
+                            style={{ borderColor: 'rgba(102,53,23,0.3)' }}
                         />
                         <button
                             type="button"
                             aria-label="toggle password visibility"
                             onClick={handleClickShowPassword}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-200 text-theme-muted hover:text-theme-primary"
+                            className="abs r3 t50 tyn5 tr d2 tm ht1"
+                            style={{ color: 'var(--color-text-muted)' }}
                         >
                             {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
                         </button>
@@ -171,12 +176,12 @@ const RegisterForm = () => {
                 </div>
 
                 {/* Confirm Password */}
-                <div className="mb-6">
-                    <label htmlFor="dublePassword" className="block text-sm font-medium mb-2 text-theme-secondary">
+                <div className={s.field}>
+                    <label htmlFor="dublePassword" className={s.label}>
                         {formik.touched.dublePassword && formik.errors.dublePassword ? formik.errors.dublePassword : "Confirm password"}
                     </label>
-                    <div className="relative flex items-center group">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-200 text-theme-muted group-focus-within:text-accent">
+                    <div className={s.inputWrap}>
+                        <span className={s.inputIcon}>
                             <LockIcon />
                         </span>
                         <input
@@ -187,13 +192,15 @@ const RegisterForm = () => {
                             value={formik.values.dublePassword}
                             placeholder="••••••••"
                             required
-                            className="input pl-10 pr-12 hover:border-accent/50"
+                            className={`${s.input} ${s.inputPr}`}
+                            style={{ borderColor: 'rgba(102,53,23,0.3)' }}
                         />
                         <button
                             type="button"
                             aria-label="toggle password visibility"
                             onClick={handleClickShowPassword}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors duration-200 text-theme-muted hover:text-theme-primary"
+                            className="abs r3 t50 tyn5 tr d2 tm ht1"
+                            style={{ color: 'var(--color-text-muted)' }}
                         >
                             {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
                         </button>
@@ -201,7 +208,7 @@ const RegisterForm = () => {
                 </div>
 
                 {/* Buttons */}
-                <div className="flex flex-col gap-3 mt-4">
+                <div className={s.btns}>
                     <GeneralButton bts={"submit"} disabled={disabled} type="submit">
                         Register
                     </GeneralButton>
@@ -211,19 +218,19 @@ const RegisterForm = () => {
                 </div>
 
                 {/* Divider */}
-                <div className="flex items-center gap-3 my-6">
-                    <div className="flex-1 h-px bg-theme-border" />
-                    <span className="text-xs text-theme-muted">or</span>
-                    <div className="flex-1 h-px bg-theme-border" />
+                <div className={s.divider}>
+                    <div className={s.dividerLine} />
+                    <span className={s.dividerText}>or</span>
+                    <div className={s.dividerLine} />
                 </div>
 
                 {/* Quick links */}
-                <div className="flex justify-center gap-4 text-sm">
-                    <a href="/" className="text-theme-secondary hover:text-accent transition-colors duration-200">
+                <div className={s.links}>
+                    <a href="/" className={s.link} style={{ textDecoration: 'none' }}>
                         Home
                     </a>
-                    <span className="text-theme-border">|</span>
-                    <a href="/" className="text-theme-secondary hover:text-accent transition-colors duration-200">
+                    <span className={s.sep}>|</span>
+                    <a href="/" className={s.link} style={{ textDecoration: 'none' }}>
                         About
                     </a>
                 </div>

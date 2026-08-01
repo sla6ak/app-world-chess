@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, Outlet } from "react-router-dom";
+import s from "./DashboardPage.module.css";
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 type PropTypes = {
@@ -14,13 +15,12 @@ const DashboardPage: React.FC<PropTypes> = ({ curentG }) => {
         } else {
             navigate("/game");
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [curentG, navigate]);
 
     return (
-        <div className="flex flex-col h-full bg-theme-primary md:flex-row md:max-h-screen">
+        <div className={s.root}>
             {/* Content sits above the background */}
-            <div className="relative z-20 min-h-full w-full">
+            <div className={s.content}>
                 <Outlet />
             </div>
         </div>

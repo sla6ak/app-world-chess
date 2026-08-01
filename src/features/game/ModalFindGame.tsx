@@ -1,6 +1,7 @@
 import React from "react";
 import GeneralButton from "@components/generalButton/GeneralButton";
 import { SpinnerDotted } from "spinners-react";
+import s from "./ModalFindGame.module.css";
 
 const ModalFindGame = ({
     onCancel,
@@ -8,18 +9,18 @@ const ModalFindGame = ({
     onCancel: () => void;
 }) => {
     return (
-        <div className="text-center">
-            <h3 className="text-xl font-bold mb-3" style={{ color: "var(--color-text-primary)" }}>
+        <div className={s.root}>
+            <h3 className={s.title} style={{ color: "var(--color-text-primary)" }}>
                 Searching for opponent
             </h3>
-            <div className="flex justify-center my-4">
+            <div className={s.spinner}>
                 <SpinnerDotted size={48} thickness={100} speed={100} color="var(--color-green)" />
             </div>
-            <p className="text-sm mb-6" style={{ color: "var(--color-text-secondary)" }}>
+            <p className={s.desc} style={{ color: "var(--color-text-secondary)" }}>
                 Looking for a player with similar rating...
             </p>
-            <div className="flex justify-center">
-                <div className="w-full sm:w-[200px]">
+            <div className={s.btnRow}>
+                <div className={s.btnWrap} style={{ width: 200 }}>
                     <GeneralButton bts={"ghost"} onClick={onCancel} type="button">
                         Cancel
                     </GeneralButton>

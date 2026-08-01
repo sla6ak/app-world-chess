@@ -1,0 +1,69 @@
+.root {
+  text-align: center;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--color-text-primary);
+}
+
+.spinner {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.desc {
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-text-secondary);
+}
+
+.btnRow {
+  display: flex;
+  justify-content: center;
+}
+
+.btnWrap {
+  display: flex;
+  justify-content: center;
+}
+
+.btn {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .btn {
+    width: 200px;
+  }
+}
+
+.spinner {
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+}
+
+.desc {
+  font-size: 0.875rem;
+  margin-bottom: 1.5rem;
+  color: var(--color-text-secondary);
+}
+
+.btnWrap {
+  display: flex;
+  justify-content: center;
+}
+
+.btn {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .btn {
+    width: 200px;
+  }
+}
