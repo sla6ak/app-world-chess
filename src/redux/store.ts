@@ -24,7 +24,8 @@ const persistConfig = {
 	key: "root",
 	version: 1,
 	storage,
-	whitelist: ["token", "wsId"],
+	// "theme" is persisted so the chosen theme survives page reloads
+	whitelist: ["token", "wsId", "theme"],
 };
 
 const rootReducer = combineReducers({

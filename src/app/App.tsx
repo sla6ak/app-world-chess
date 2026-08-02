@@ -5,9 +5,11 @@ import { useIsActivTokenQuery } from "@redux/api/authApi";
 import { setUserName, setUserStats } from "@redux/slices/user";
 import { connectToRoom, reconnectToActiveGame } from "@redux/thunks/roomThunks";
 import { roomSlice } from "@redux/slices/room";
+import { newColorGame } from "@redux/slices/color";
+import { resolvePlayerColor } from "@helpers/theme";
 import { setSearchMode, setGameStart, setGameOver, resetGameEvents, GameResult } from "@redux/slices/gameEvents";
 import { getRoom } from "@services/roomManager";
-import Layout from "@layouts/Layout";
+import Layout from "@components/layout/Layout";
 import { applyTheme } from "@helpers/theme";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -15,7 +17,7 @@ import PrivateRoute from "@components/privateRoute/PrivateRoute";
 import PublicRoute from "@components/publicRoute/PublicRoute";
 import Statistics from "@features/home/Statistics";
 import HomeTab from "@features/home/HomeTab";
-import GameBoard from "@features/game/GameBoard";
+import GameArea from "@features/game/GameArea";
 import type { RootState, AppDispatch } from "@redux/store";
 
 const LoginPage = React.lazy(() => import("@pages/loginPage/LoginPage"));
@@ -86,6 +88,27 @@ function AppContent() {
 
                     // WS кімната вже підключена всередині reconnectToActiveGame
                     dispatch(roomSlice.actions.connectRoomSuccess({ roomId: gameId }));
+
+                    // Відновлюємо дані партії з документа MongoDB
+                    // (getActiveGame повертає nameWite/nameBlack/...)
+                    const restored = {
+                        idGame: String(gameData._id ?? gameId),
+                        position: gameData.position ?? [],
+                        playerWite: gameData.nameWite ?? gameData.playerWite ?? "",
+                        playerBlack: gameData.nameBlack ?? gameData.playerBlack ?? "",
+                        reitingWite: gameData.reitingWite ?? 800,
+                        reitingBlack: gameData.reitingBlack ?? 800,
+                        timeWite: Number(gameData.timeWite) || gameData.timeControl || 180,
+                        timeBlack: Number(gameData.timeBlack) || gameData.timeControl || 180,
+                        move: gameData.move ?? true,
+                        message: gameData.message ?? "",
+                        typeGame: gameData.typeGame || "standart",
+                        timeControl: gameData.timeControl || 180,
+                        timePluse: gameData.timePluse || 0,
+                    };
+                    dispatch(roomSlice.actions.gameStartSuccess(restored));
+                    const resolvedColor = resolvePlayerColor(userName, restored);
+                    if (resolvedColor) dispatch(newColorGame(resolvedColor));
                     dispatch(setSearchMode({
                         typeGame: gameData.typeGame || "standart",
                         timeControl: gameData.timeControl || 180,
@@ -139,6 +162,8 @@ function AppContent() {
             console.log("[WS] gameStart — idGame:", msg.idGame,
                 "| white:", msg.playerWite,
                 "| black:", msg.playerBlack);
+            const resolvedColor = resolvePlayerColor(userName, msg);
+            if (resolvedColor) dispatch(newColorGame(resolvedColor));
             dispatch(
                 roomSlice.actions.gameStartSuccess({
                     idGame: msg.idGame,
@@ -190,7 +215,7 @@ function AppContent() {
             unsubscribeGameStart();
             unsubscribeGameOver();
         };
-    }, [roomId, dispatch, navigate, token, color]);
+    }, [roomId, dispatch, navigate, token, color, userName]);
 
     return (
         <Routes>
@@ -205,7 +230,7 @@ function AppContent() {
                 <Route index element={<DashboardPage curentG={curentG} />} />
                 <Route path="/home" element={<HomeTab />} />
                 <Route path="/statistic" element={<Statistics />} />
-                <Route path="/game" element={<GameBoard />} />
+                <Route path="/game" element={<GameArea />} />
             </Route>
             <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />

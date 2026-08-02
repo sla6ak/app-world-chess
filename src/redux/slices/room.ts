@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { resolvePlayerColor } from "@helpers/theme";
 
 export interface RoomState {
     roomId: string | null;
@@ -82,6 +83,13 @@ export const {
     gameStartSuccess,
     gameReset,
 } = roomSlice.actions;
+
+/** Which color the current user plays in the active game: "wite" | "black" | null. */
+export const selectPlayerColor = (state: {
+    user: { userName: string };
+    room: RoomState;
+}): "wite" | "black" | null =>
+    resolvePlayerColor(state.user.userName, state.room.gameData);
 
 export const roomReducer = roomSlice.reducer;
 export { roomSlice };

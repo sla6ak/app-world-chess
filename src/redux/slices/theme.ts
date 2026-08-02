@@ -1,16 +1,20 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { THEMES, type ThemeName } from "@helpers/theme";
 
-const initialTheme = "theme-light" as const;
+const initialTheme: ThemeName = "theme-light";
 
 export const themeSlice = createSlice({
     name: "theme",
-    initialState: initialTheme,
+    initialState: initialTheme as ThemeName,
     reducers: {
-        setTheme(state, action) {
+        setTheme(_state, action: PayloadAction<ThemeName>) {
             return action.payload;
         },
     },
 });
+
+export const isThemeName = (value: unknown): value is ThemeName =>
+    typeof value === "string" && (THEMES as readonly string[]).includes(value);
 
 export const { setTheme } = themeSlice.actions;
 
