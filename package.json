@@ -4,6 +4,10 @@
   "private": true,
   "homepage": "https://app-world-chess.vercel.app/",
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^5.18.0",
+    "@mui/material": "^5.18.0",
     "@reduxjs/toolkit": "^2.12.0",
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.11",
