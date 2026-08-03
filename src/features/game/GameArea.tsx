@@ -9,6 +9,7 @@ import { getRoom } from "@services/roomManager";
 import type { RootState, AppDispatch } from "@redux/store";
 import { selectPlayerColor } from "@redux/slices/room";
 import { offerDraw, resignGame } from "@redux/thunks/roomThunks";
+import { setGameStart } from "@redux/slices/gameEvents";
 import { useDispatch, useSelector } from "react-redux";
 import { toast } from "react-toastify";
 import s from "./GameArea.module.css";
@@ -205,25 +206,55 @@ const GameArea: React.FC<GameAreaProps> = () => {
     }, [gameData?.idGame, gameData?.fen, initializeFromFen]);
 
     /* ── Listen to server messages ── */
+    // roomId в зависимостях: комната записывается в roomManager ПОСЛЕ
+    // joinOrCreate, а GameArea может примонтироваться раньше — без этого
+    // подписки на move_made/move_error/gameResumed не ставились у первого игрока,
+    // и ходы соперника визуально «не приходили».
+    const roomId = useSelector((state: RootState) => state.room.roomId);
+
     useEffect(() => {
         const room = getRoom();
         if (!room) return;
 
         const handleMoveMade = (message: unknown) => {
-            const msg = message as { fen?: string; move?: { from: string; to: string } };
-            if (msg.fen) {
-                initializeFromFen(msg.fen);
-                setLastMove({
-                    from: msg.move ? squareToBoardIndex(msg.move.from) : -1,
-                    to: msg.move ? squareToBoardIndex(msg.move.to) : -1,
-                });
+            const msg = message as {
+                fen?: string;
+                move?: { from: string; to: string; promotion?: string };
+                timers?: { white: number; black: number };
+            };
+            if (!msg.fen) return;
+            initializeFromFen(msg.fen);
+            // Сбрасываем выделение фигуры — доска обновилась под ходом оппонента.
+            setActivFigure({ _id: -1, figure: "" });
+            setValidMoves([]);
+            setLastMove({
+                from: msg.move ? squareToBoardIndex(msg.move.from) : -1,
+                to: msg.move ? squareToBoardIndex(msg.move.to) : -1,
+            });
+            // Авторитетные часы с сервера — синхронизируемся сразу, не ждём тики.
+            if (msg.timers) {
+                setClockWhite(msg.timers.white);
+                setClockBlack(msg.timers.black);
             }
         };
 
         const handleMoveError = (message: unknown) => {
-            const msg = message as { message: string; fen: string };
+            const msg = message as { code?: string; message?: string; fen?: string };
             toast.error(msg.message || "Invalid move");
-            if (msg.fen) initializeFromFen(msg.fen);
+            // Жёсткий ресинхрон с сервером: откатываем локальный оптимистичный ход.
+            if (msg.fen) {
+                initializeFromFen(msg.fen);
+            } else if (gameData?.fen) {
+                initializeFromFen(gameData.fen);
+            }
+            setActivFigure({ _id: -1, figure: "" });
+            setValidMoves([]);
+            setLastMove(null);
+        };
+
+        const handleOpponentJoined = () => {
+            toast.success("Суперника знайдено! Гра почалась");
+            dispatch(setGameStart());
         };
 
         const handleGameResumed = (message: unknown) => {
@@ -238,13 +269,16 @@ const GameArea: React.FC<GameAreaProps> = () => {
         const unsubscribeMove = room.onMessage("move_made", handleMoveMade);
         const unsubscribeError = room.onMessage("move_error", handleMoveError);
         const unsubscribeResumed = room.onMessage("gameResumed", handleGameResumed);
+        const unsubscribeOpponentJoined = room.onMessage("opponent_joined", handleOpponentJoined);
 
         return () => {
             unsubscribeMove();
             unsubscribeError();
             unsubscribeResumed();
+            unsubscribeOpponentJoined();
         };
-    }, [initializeFromFen]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initializeFromFen, roomId]);
 
     /* ── Click handler ── */
     const handleClick = useCallback(
@@ -356,7 +390,12 @@ const GameArea: React.FC<GameAreaProps> = () => {
     }, []);
 
     /* ── Derived data ── */
-    const kingInCheck = useMemo(() => isKingInCheck(chessRef.current, playerColor === "w"), [playerColor]);
+    // Пересчитываем шах при каждом изменении доски, а не только цвета игрока —
+    // иначе подсветка короля под шахом замирала в неактуальном состоянии.
+    const kingInCheck = useMemo(
+        () => isKingInCheck(chessRef.current, playerColor === "w"),
+        [playerColor, board]
+    );
 
     /* ── Coordinate labels ── */
     const fileLabels = useMemo(() => {

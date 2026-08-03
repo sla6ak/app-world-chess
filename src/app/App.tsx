@@ -9,6 +9,7 @@ import { newColorGame } from "@redux/slices/color";
 import { resolvePlayerColor } from "@helpers/theme";
 import { setSearchMode, setGameStart, setGameOver, resetGameEvents, GameResult, setDrawOffer, clearDrawOffer } from "@redux/slices/gameEvents";
 import { getRoom } from "@services/roomManager";
+import { toGameData } from "@helpers/roomSerializer";
 import { store } from "@redux/store";
 import Layout from "@components/layout/Layout";
 import { applyTheme } from "@helpers/theme";
@@ -141,14 +142,9 @@ function AppContent() {
 
         const handleGameMessage = (message: unknown) => {
             console.log("[WS] Received 'game' event:", JSON.stringify(message));
-            const msg = message as {
-                position?: string[];
-                move?: boolean;
-                timeWite?: number;
-                timeBlack?: number;
-                fen?: string;
-            };
-            if (msg.position && msg.position.length > 0) {
+            const parsed = toGameData(message);
+            if (!parsed) return;
+            if (parsed.position && parsed.position.length > 0) {
                 dispatch(clearDrawOffer());
             }
             const current = (store.getState() as RootState).room.gameData;
@@ -156,11 +152,11 @@ function AppContent() {
                 dispatch(
                     roomSlice.actions.gameStartSuccess({
                         ...current,
-                        position: msg.position ?? current.position,
-                        move: msg.move ?? current.move,
-                        timeWite: msg.timeWite ?? current.timeWite,
-                        timeBlack: msg.timeBlack ?? current.timeBlack,
-                        ...(msg.fen ? { fen: msg.fen } : {}),
+                        position: parsed.position.length > 0 ? parsed.position : current.position,
+                        move: parsed.move,
+                        timeWite: parsed.timeWite,
+                        timeBlack: parsed.timeBlack,
+                        ...(parsed.fen ? { fen: parsed.fen } : {}),
                     })
                 );
             }
@@ -292,9 +288,22 @@ function AppContent() {
                 timers?: { white: number; black: number };
                 nextTurn?: string;
             };
-            // Обновляем состояние через GameArea (у него есть свой обработчики)
-            // Здесь только подчищаем любые предложения ничьей
             dispatch(clearDrawOffer());
+
+            // Синхронизируем Redux — иначе gameData.move тикает не того игрока,
+            // и доска визуально замирает до прихода следующего 'game' бродкаста.
+            const current = (store.getState() as RootState).room.gameData;
+            if (current?.idGame && msg.fen) {
+                dispatch(
+                    roomSlice.actions.gameStartSuccess({
+                        ...current,
+                        ...(msg.fen ? { fen: msg.fen } : {}),
+                        move: msg.nextTurn ? msg.nextTurn === "w" : current.move,
+                        timeWite: msg.timers ? msg.timers.white : current.timeWite,
+                        timeBlack: msg.timers ? msg.timers.black : current.timeBlack,
+                    })
+                );
+            }
         };
 
         const handleMoveError = (message: unknown) => {
@@ -341,6 +350,13 @@ function AppContent() {
             toast.info("Игра восстановлена");
         };
 
+        const handleOpponentDisconnected = () => {
+            console.log("[WS] Received 'opponent_disconnected'");
+            toast.info("Соперник отключился — ждём его возвращения (60 сек)", {
+                autoClose: 5000,
+            });
+        };
+
         const unsubscribeGame = room.onMessage("game", handleGameMessage);
         const unsubscribeGameStart = room.onMessage("gameStart", handleGameStart);
         const unsubscribeGameOver = room.onMessage("gameOver", handleGameOver);
@@ -350,6 +366,7 @@ function AppContent() {
         const unsubscribeMoveError = room.onMessage("move_error", handleMoveError);
         const unsubscribeTimers = room.onMessage("timers", handleTimers);
         const unsubscribeGameResumed = room.onMessage("gameResumed", handleGameResumed);
+        const unsubscribeOpponentDisconnected = room.onMessage("opponent_disconnected", handleOpponentDisconnected);
 
         return () => {
             unsubscribeGame();
@@ -361,6 +378,7 @@ function AppContent() {
             unsubscribeMoveError();
             unsubscribeTimers();
             unsubscribeGameResumed();
+            unsubscribeOpponentDisconnected();
         };
     }, [roomId, dispatch, navigate, token, color, userName]);
 
