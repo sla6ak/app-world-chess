@@ -2,16 +2,7 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { authApi } from "@redux/api/authApi";
 import { setRoom, getRoom } from "@services/roomManager";
 import client from "@services/client";
-import {
-    setSearchMode,
-    setGameStart,
-    setGameOver,
-    resetGameEvents,
-    setSearchGameId,
-} from "@redux/slices/gameEvents";
-import { roomSlice } from "@redux/slices/room";
 import type { RootState } from "@redux/store";
-import type { AppDispatch } from "@redux/store";
 
 /**
  * startSearch — REST: створити пошук гри або підключитися до існуючої.

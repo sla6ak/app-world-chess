@@ -141,11 +141,28 @@ function AppContent() {
 
         const handleGameMessage = (message: unknown) => {
             console.log("[WS] Received 'game' event:", JSON.stringify(message));
-            // Новая позиция — любой ход автоматически отклоняет активное предложение ничьей,
-            // поэтому локально сбрасываем анимацию кнопки ничьей.
-            const msg = message as { position?: string[] };
+            const msg = message as {
+                position?: string[];
+                move?: boolean;
+                timeWite?: number;
+                timeBlack?: number;
+                fen?: string;
+            };
             if (msg.position && msg.position.length > 0) {
                 dispatch(clearDrawOffer());
+            }
+            const current = (store.getState() as RootState).room.gameData;
+            if (current?.idGame) {
+                dispatch(
+                    roomSlice.actions.gameStartSuccess({
+                        ...current,
+                        position: msg.position ?? current.position,
+                        move: msg.move ?? current.move,
+                        timeWite: msg.timeWite ?? current.timeWite,
+                        timeBlack: msg.timeBlack ?? current.timeBlack,
+                        ...(msg.fen ? { fen: msg.fen } : {}),
+                    })
+                );
             }
             setCurentG(true);
         };
@@ -153,44 +170,52 @@ function AppContent() {
         const handleGameStart = (message: unknown) => {
             console.log("[WS] Received 'gameStart' event:", JSON.stringify(message));
             const msg = message as {
-                idGame: string;
-                position: string[];
-                playerWite: string;
-                playerBlack: string;
-                reitingWite: number;
-                reitingBlack: number;
-                timeWite: number;
-                timeBlack: number;
-                move: boolean;
-                message: string;
-                typeGame: string;
-                timeControl: number;
-                timePluse: number;
+                idGame?: string;
+                position?: string[];
+                playerWite?: string;
+                playerBlack?: string;
+                reitingWite?: number;
+                reitingBlack?: number;
+                timeWite?: number;
+                timeBlack?: number;
+                move?: boolean;
+                message?: string;
+                typeGame?: string;
+                timeControl?: number;
+                timePluse?: number;
                 fen?: string;
             };
-            console.log("[WS] gameStart — idGame:", msg.idGame,
-                "| white:", msg.playerWite,
-                "| black:", msg.playerBlack);
-            const resolvedColor = resolvePlayerColor(userName, msg);
-            if (resolvedColor) dispatch(newColorGame(resolvedColor));
-            dispatch(
-                roomSlice.actions.gameStartSuccess({
-                    idGame: msg.idGame,
-                    position: msg.position,
-                    playerWite: msg.playerWite,
-                    playerBlack: msg.playerBlack,
-                    reitingWite: msg.reitingWite,
-                    reitingBlack: msg.reitingBlack,
-                    timeWite: msg.timeWite,
-                    timeBlack: msg.timeBlack,
-                    move: msg.move,
-                    message: msg.message,
-                    typeGame: msg.typeGame,
-                    timeControl: msg.timeControl,
-                    timePluse: msg.timePluse,
-                    fen: msg.fen,
-                })
+            if (!msg.idGame || msg.idGame === "undefined") {
+                console.error("[WS] gameStart missing idGame — ignoring");
+                return;
+            }
+            console.log(
+                "[WS] gameStart — idGame:",
+                msg.idGame,
+                "| white:",
+                msg.playerWite,
+                "| black:",
+                msg.playerBlack
             );
+            const payload = {
+                idGame: msg.idGame,
+                position: msg.position ?? [],
+                playerWite: msg.playerWite ?? "",
+                playerBlack: msg.playerBlack ?? "",
+                reitingWite: msg.reitingWite ?? 800,
+                reitingBlack: msg.reitingBlack ?? 800,
+                timeWite: msg.timeWite ?? 180,
+                timeBlack: msg.timeBlack ?? 180,
+                move: msg.move ?? true,
+                message: msg.message ?? "",
+                typeGame: msg.typeGame ?? "standart",
+                timeControl: msg.timeControl ?? 180,
+                timePluse: msg.timePluse ?? 0,
+                fen: msg.fen,
+            };
+            const resolvedColor = resolvePlayerColor(userName, payload);
+            if (resolvedColor) dispatch(newColorGame(resolvedColor));
+            dispatch(roomSlice.actions.gameStartSuccess(payload));
             dispatch(setGameStart());
             setCurentG(true);
             console.log("[WS] Navigating to /game");

@@ -20,7 +20,7 @@
     "noImplicitAny": true,
     "noImplicitReturns": true,
     "baseUrl": ".",
-    "ignoreDeprecations": "5.0",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@components/*": ["src/components/*"],
       "@helpers/*": ["src/helpers/*"],
