@@ -127,7 +127,21 @@ const GameArea: React.FC<GameAreaProps> = () => {
     const [animatingSquare, setAnimatingSquare] = useState<number | null>(null);
 
     const isWhite = useSelector(selectPlayerColor) !== "black";
-    const [boardFlipped, setBoardFlipped] = useState(!isWhite); // по умолчанию для чёрных доска перевёрнута
+    // shouldFlipBoard: true когда игрок играет чёрными
+    // → доска перевёрнута, чёрные фигуры снизу
+    const [shouldFlipBoard, setShouldFlipBoard] = useState(false);
+
+    // Автоматически переворачиваем доску если игрок играет чёрными
+    // срабатывает один раз при монтировании
+    const [autoFlipDone, setAutoFlipDone] = useState(false);
+    useEffect(() => {
+        if (!autoFlipDone) {
+            setAutoFlipDone(true);
+            if (!isWhite) {
+                setShouldFlipBoard(true);
+            }
+        }
+    }, [isWhite, autoFlipDone]);
 
     // Clocks from server timers
     const timeWite = gameData?.timeWite ?? 180;
@@ -152,9 +166,20 @@ const GameArea: React.FC<GameAreaProps> = () => {
         return () => clearInterval(timer);
     }, [gameData?.move, isGameOver]);
 
-    const flipped = boardFlipped;
+    // Авто-флип для чёрного игрока + ручная кнопка
+    const flipped = shouldFlipBoard;
     const playerColor = isWhite ? "w" : "b";
-    const bottomColor: "w" | "b" = !flipped ? playerColor : playerColor === "w" ? "b" : "w";
+
+    /*
+     * bottomColor — цвет фигур, которые должны быть внизу доски.
+     * Каждый игрок должен видеть СВОИ фигуры внизу:
+     * - Белый игрок → всегда видит белых снизу
+     * - Чёрный игрок → всегда видит чёрных снизу (как будто он "сидит за доской")
+     *
+     * flip = true  → доска перевёрнута: чёрные снизу, белые сверху
+     * flip = false → доска нормальная: белые снизу, чёрные сверху
+     */
+    const bottomColor: "w" | "b" = isWhite ? "w" : "b";
 
     /* ── Initialize from FEN ── */
     const initializeFromFen = useCallback((fen: string) => {
@@ -411,7 +436,7 @@ const GameArea: React.FC<GameAreaProps> = () => {
                 />
 
                 <div className={s.boardWrap}>
-                    <button className={s.flipBtn} onClick={() => setBoardFlipped((prev) => !prev)} title="Flip" type="button">
+                    <button className={s.flipBtn} onClick={() => setShouldFlipBoard((prev) => !prev)} title="Flip" type="button">
                         ⇅
                     </button>
 
