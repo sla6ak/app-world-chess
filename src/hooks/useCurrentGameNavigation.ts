@@ -2,9 +2,11 @@ import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
+import type { AppDispatch } from "@redux/store";
 import { authApi } from "@redux/api/authApi";
 import { newColorGame } from "@redux/slices/color";
 import { roomSlice } from "@redux/slices/room";
+import { connectToRoom } from "@redux/thunks/roomThunks";
 import { resolvePlayerColor } from "@helpers/theme";
 
 const getUserNameFromStorage = (): string => {
@@ -19,14 +21,24 @@ const getUserNameFromStorage = (): string => {
     }
 };
 
+/** Get token from localStorage (redux-persist root) */
+const getTokenFromStorage = (): string => {
+    try {
+        const root = localStorage.getItem("persist:root");
+        if (!root) return "";
+        return JSON.parse(root)?.token ?? "";
+    } catch {
+        return "";
+    }
+};
+
 /**
- * Возвращает обработчик перехода к текущей активной игре:
- * - если неоконченная партия есть на сервере — восстанавливает состояние и ведёт на /game,
- * - иначе показывает toast "Текущая игра не найдена".
+ * Returns a handler to fetch the active game and navigate to /game.
+ * Called from "Current game" button in Sidebar/MobileHeader.
  */
 const useCurrentGameNavigation = () => {
     const navigate = useNavigate();
-    const dispatch = useDispatch();
+    const dispatch = useDispatch<AppDispatch>();
     const [checkActiveGame, { isFetching: checkingGame }] =
         authApi.useLazyGetActiveGameQuery();
 
@@ -34,14 +46,15 @@ const useCurrentGameNavigation = () => {
         try {
             const result = await checkActiveGame(undefined, false).unwrap();
             const g: any = result?.game;
+
             if (result?.status !== "matched" || !g) {
                 toast.info("Текущая игра не найдена");
                 return;
             }
-            // Восстанавливаем состояние партии и переходим на страницу игры;
-            // App.tsx сам переподключится к WS-комнате по gameId.
+
+            const gameId = String(g._id);
             const restored = {
-                idGame: String(g._id),
+                idGame: gameId,
                 position: g.position ?? [],
                 playerWite: g.nameWite ?? g.playerWite ?? "",
                 playerBlack: g.nameBlack ?? g.playerBlack ?? "",
@@ -55,13 +68,34 @@ const useCurrentGameNavigation = () => {
                 timeControl: g.timeControl || 180,
                 timePluse: g.timePluse || 0,
             };
+
+            // Store game data in Redux BEFORE navigation
             dispatch(roomSlice.actions.gameStartSuccess(restored));
+
             const myName = getUserNameFromStorage();
             const resolved = resolvePlayerColor(myName, restored);
             if (resolved) dispatch(newColorGame(resolved));
+
+            // Join WS room with gameId — server loads the game from MongoDB
+            const token = getTokenFromStorage();
+            try {
+                await dispatch(
+                    connectToRoom({
+                        token: token || "",
+                        color: resolved || "wite",
+                        gameId,
+                    })
+                ).unwrap();
+                console.log("[Reconnect] Connected to room | gameId:", gameId);
+            } catch (e) {
+                console.warn("[Reconnect] connectToRoom failed:", e);
+                toast.warn("Не удалось подключиться к серверу — попробуйте снова");
+            }
+
             navigate("/game");
-        } catch {
-            toast.info("Текущая игра не найдена");
+        } catch (err) {
+            console.error("[Reconnect] Failed:", err);
+            toast.info("Не удалось найти или восстановить игру");
         }
     }, [checkActiveGame, dispatch, navigate]);
 
