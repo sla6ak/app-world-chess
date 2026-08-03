@@ -91,8 +91,12 @@ export const connectToRoom = createAsyncThunk<
             console.log("[WS] Connecting to Colyseus room with gameId:", gameId || "chess_room");
             const room = await client.joinOrCreate("chess_room", { token, color, gameId });
             setRoom(room);
-            console.log("[WS] Connected to room, roomId:", room.roomId);
-            return { roomId: room.roomId };
+            const sessionRoomId = room.roomId;
+            console.log(
+                "[WS] Connected to room | sessionRoomId:", sessionRoomId,
+                "| gameId (mongo):", gameId
+            );
+            return { roomId: sessionRoomId };
         } catch (error: unknown) {
             console.error("[WS] Failed to connect to room:", error);
             return rejectWithValue(error instanceof Error ? error.message : "Failed to connect to room");

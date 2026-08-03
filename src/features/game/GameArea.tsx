@@ -41,7 +41,7 @@ const displayToBoard = (displayIdx: number, flipped: boolean): number => {
     if (!flipped) return displayIdx;
     const row = Math.floor(displayIdx / 8);
     const col = displayIdx % 8;
-    return (7 - row) * 8 + col;
+    return (7 - row) * 8 + (7 - col); // ← добавить реверс колонок!
 };
 
 /** FEN to flat 64-char board string (index 0 = a8). */
@@ -127,7 +127,7 @@ const GameArea: React.FC<GameAreaProps> = () => {
     const [animatingSquare, setAnimatingSquare] = useState<number | null>(null);
 
     const isWhite = useSelector(selectPlayerColor) !== "black";
-    const [boardFlipped, setBoardFlipped] = useState(false);
+    const [boardFlipped, setBoardFlipped] = useState(!isWhite); // по умолчанию для чёрных доска перевёрнута
 
     // Clocks from server timers
     const timeWite = gameData?.timeWite ?? 180;
