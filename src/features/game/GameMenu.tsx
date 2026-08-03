@@ -20,11 +20,13 @@ const GameMenu: React.FC<PropTypes> = () => {
     const color = useSelector((state: RootState) => (state as any).colorGame);
     const token = useSelector((state: RootState) => (state as any).token);
     const searchGameId = useSelector((state: RootState) => (state as any).gameEvents.searchGameId);
+    const roomGameStarted = useSelector((state: RootState) => (state as any).room.gameStarted);
     const dispatch = useAppDispatch();
     const [typeGame, setTypeGame] = useState<"standart" | "fisher">("standart");
     const [createSearchRoom] = useCreateSearchRoomMutation();
 
     const isSearching = gameStatus === "searching";
+    const hasActiveGame = roomGameStarted || gameStatus === "playing" || gameStatus === "searching";
 
     const gameRegim = () => {
         setTypeGame((prev) => (prev === "standart" ? "fisher" : "standart"));
@@ -114,27 +116,33 @@ const GameMenu: React.FC<PropTypes> = () => {
             <header className={s.header}>
                 <div className={s.headerRow}>
                     <div>
-                        <h1 className={s.title} style={{ color: "var(--color-text-primary)" }}>
+                        <h1 className={s.title}>
                             New Game
                         </h1>
-                        <p className={s.sub} style={{ color: "var(--color-text-secondary)" }}>
+                        <p className={s.sub}>
                             Choose a time control to start playing
                         </p>
                     </div>
                     <button
                         onClick={gameRegim}
                         className={s.btn}
-                        style={{
-                            backgroundColor: "var(--color-accent-subtle)",
-                            color: "var(--color-accent)",
-                            border: "1px solid var(--color-accent-border)",
-                            boxShadow: "0 3px 0 rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.15)",
-                        }}
                     >
                         <span className={s.btnLabel}>Regim:</span> {typeGame}
                     </button>
                 </div>
             </header>
+
+            {/* Active game warning */}
+            {hasActiveGame && (
+                <div className={s.warningBanner}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                        <line x1="12" y1="9" x2="12" y2="13" />
+                        <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    <span>У вас уже есть активная игра</span>
+                </div>
+            )}
 
             {/* Time controls grid */}
             <div className={s.body}>
@@ -143,20 +151,13 @@ const GameMenu: React.FC<PropTypes> = () => {
                         <button
                             key={`${tc}-${tp}`}
                             onClick={() => handleStartSearch(tc, tp)}
-                            disabled={creatingRoom || isSearching}
+                            disabled={creatingRoom || isSearching || hasActiveGame}
                             className={s.card}
-                            style={{
-                                backgroundColor: "rgba(102, 53, 23, 0.85)",
-                                color: "var(--color-text-on-accent)",
-                                boxShadow: "0 4px 0 rgba(0,0,0,0.3), 0 6px 12px rgba(0,0,0,0.2), var(--shadow-card)",
-                                border: "1px solid rgba(255,255,255,0.1)",
-                                transform: "translateY(2px)",
-                            }}
                         >
                             {/* Cube top face highlight */}
-                            <div className={s.cardTop} style={{ height: '50%', backgroundImage: 'linear-gradient(to bottom, rgba(255,255,255,0.15), transparent)', opacity: 0, transition: 'opacity 200ms ease', borderTopLeftRadius: 'inherit', borderTopRightRadius: 'inherit' }} />
+                            <div className={s.cardTop} />
                             {/* Subtle shine effect on hover */}
-                            <div className={s.cardShine} style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.1), transparent)', opacity: 0, transition: 'opacity 200ms ease' }} />
+                            <div className={s.cardShine} />
                             <span className={s.cardIcon}>{tc}</span>
                             {tp > 0 && (
                                 <span className={s.cardSub}>

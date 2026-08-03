@@ -29,7 +29,8 @@
       "@pages/*": ["src/pages/*"],
       "@features/*": ["src/features/*"],
       "@config/*": ["src/config/*"],
-      "@images/*": ["src/images/*"]
+      "@images/*": ["src/images/*"],
+      "@hooks/*": ["src/hooks/*"]
     },
     "types": ["tailwindcss"]
   },

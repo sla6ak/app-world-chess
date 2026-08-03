@@ -66,11 +66,27 @@
   text-decoration: none;
   transition: all 200ms ease;
   color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
 }
 
-.link:hover {
+.link:hover:not(:disabled) {
   background-color: var(--color-bg-hover);
   color: var(--color-text-primary);
+}
+
+.link:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
 }
 
 .linkActive {
@@ -88,12 +104,18 @@
   font-weight: 500;
   text-decoration: none;
   transition: all 200ms ease;
-  color: #ef4444;
+  color: var(--color-error);
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .linkDanger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #fca5a5;
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
 }
 
 .brand {

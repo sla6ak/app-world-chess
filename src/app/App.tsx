@@ -7,8 +7,9 @@ import { connectToRoom, reconnectToActiveGame } from "@redux/thunks/roomThunks";
 import { roomSlice } from "@redux/slices/room";
 import { newColorGame } from "@redux/slices/color";
 import { resolvePlayerColor } from "@helpers/theme";
-import { setSearchMode, setGameStart, setGameOver, resetGameEvents, GameResult } from "@redux/slices/gameEvents";
+import { setSearchMode, setGameStart, setGameOver, resetGameEvents, GameResult, setDrawOffer, clearDrawOffer } from "@redux/slices/gameEvents";
 import { getRoom } from "@services/roomManager";
+import { store } from "@redux/store";
 import Layout from "@components/layout/Layout";
 import { applyTheme } from "@helpers/theme";
 import { toast } from "react-toastify";
@@ -139,6 +140,12 @@ function AppContent() {
 
         const handleGameMessage = (message: unknown) => {
             console.log("[WS] Received 'game' event:", JSON.stringify(message));
+            // Новая позиция — любой ход автоматически отклоняет активное предложение ничьей,
+            // поэтому локально сбрасываем анимацию кнопки ничьей.
+            const msg = message as { position?: string[] };
+            if (msg.position && msg.position.length > 0) {
+                dispatch(clearDrawOffer());
+            }
             setCurentG(true);
         };
 
@@ -206,14 +213,40 @@ function AppContent() {
             navigate("/home");
         };
 
+        const handleDrawOffered = (message: unknown) => {
+            console.log("[WS] Received 'draw_offered' event:", JSON.stringify(message));
+            const msg = message as { byRole?: "wite" | "black" };
+            if (!msg.byRole) return;
+            // Сверяем роль отправителя предложения с нашей ролью в текущей партии
+            // (playerWite/playerBlack хранят никнеймы — сравниваем по ним).
+            const gameData = (store.getState() as RootState).room.gameData;
+            const myRole = gameData ? resolvePlayerColor(userName, gameData) : null;
+            if (myRole && msg.byRole === myRole) {
+                // Мы предложили ничью — ждём ответа соперника
+                dispatch(setDrawOffer("me"));
+            } else if (myRole) {
+                // Соперник предложил ничью — пульсирующая кнопка «Ничья» у нас
+                dispatch(setDrawOffer("opponent"));
+            }
+        };
+
+        const handleGameDeclinedDraw = (message: unknown) => {
+            console.log("[WS] Received 'draw_cleared' event:", JSON.stringify(message));
+            dispatch(clearDrawOffer());
+        };
+
         const unsubscribeGame = room.onMessage("game", handleGameMessage);
         const unsubscribeGameStart = room.onMessage("gameStart", handleGameStart);
         const unsubscribeGameOver = room.onMessage("gameOver", handleGameOver);
+        const unsubscribeDrawOffered = room.onMessage("draw_offered", handleDrawOffered);
+        const unsubscribeGameDeclinedDraw = room.onMessage("draw_cleared", handleGameDeclinedDraw);
 
         return () => {
             unsubscribeGame();
             unsubscribeGameStart();
             unsubscribeGameOver();
+            unsubscribeDrawOffered();
+            unsubscribeGameDeclinedDraw();
         };
     }, [roomId, dispatch, navigate, token, color, userName]);
 

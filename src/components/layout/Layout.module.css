@@ -1,19 +1,23 @@
 .layout {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* min-height вместо height: позволяет странице вырасти выше
+     вьюпорта, когда контент длинный, но гарантирует минимум = весь экран */
+  min-height: 100vh;
   background-color: var(--color-bg-primary);
 }
 
 @media (min-width: 768px) {
   .layout {
     flex-direction: row;
-    max-height: 100vh;
   }
 }
 
 .main {
   flex: 1;
-  height: 100%;
+  /* min-height: 0 позволяет flex-потомку сжиматься ниже высоты контента,
+     чтобы скролл работал внутри .main, а не на всей странице */
+  min-height: 0;
+  min-width: 0;
   overflow: auto;
 }

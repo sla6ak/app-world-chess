@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import PlayerInfo from "@components/playerInfo/PlayerInfo";
 import GameHeader from "@components/gameHeader/GameHeader";
+import ConfirmDialog from "@components/modal/ConfirmDialog";
 import showFigure from "@helpers/showFigure";
 import { getRoom } from "@services/roomManager";
-import type { RootState } from "@redux/store";
+import type { RootState, AppDispatch } from "@redux/store";
 import { selectPlayerColor } from "@redux/slices/room";
-import { useSelector } from "react-redux";
+import { offerDraw, resignGame } from "@redux/thunks/roomThunks";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import s from "./GameArea.module.css";
 
 /* ───────────────────────────────────────────
@@ -142,8 +145,44 @@ const getValidMoves = (board: Square[], index: number): number[] => {
    Component
    ─────────────────────────────────────────── */
 const GameArea: React.FC = () => {
+    const dispatch = useDispatch<AppDispatch>();
     const userName = useSelector((state: RootState) => state.user.userName);
     const gameData = useSelector((state: RootState) => state.room.gameData);
+    const gameStatus = useSelector((state: RootState) => state.gameEvents.status);
+    const drawOfferedBy = useSelector((state: RootState) => state.gameEvents.drawOfferedBy);
+    const isGameOver = gameStatus === "gameover";
+
+    // ── Modals ──
+    const [resignModalOpen, setResignModalOpen] = useState(false);
+    const [drawModalOpen, setDrawModalOpen] = useState(false);
+
+    // ── Clocks: локальный таймер, инициализируется временем из настроек режима игры ──
+    const initialClock = Math.max(gameData?.timeControl ?? 180, 0);
+    const [clockWhite, setClockWhite] = useState<number>(
+        gameData?.timeWite || initialClock,
+    );
+    const [clockBlack, setClockBlack] = useState<number>(
+        gameData?.timeBlack || initialClock,
+    );
+
+    useEffect(() => {
+        setClockWhite(gameData?.timeWite || initialClock);
+        setClockBlack(gameData?.timeBlack || initialClock);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameData?.idGame, gameData?.timeWite, gameData?.timeBlack]);
+
+    useEffect(() => {
+        if (isGameOver) return;
+        const timer = setInterval(() => {
+            const isWhiteMove = gameData?.move ?? true;
+            if (isWhiteMove) {
+                setClockWhite((t) => Math.max(0, t - 1));
+            } else {
+                setClockBlack((t) => Math.max(0, t - 1));
+            }
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [gameData?.move, isGameOver]);
 
     // Explicit who-is-who check: our color is derived from the match between
     // the authorized user and the game's white/black player names.
@@ -319,20 +358,37 @@ const GameArea: React.FC = () => {
             : gameData.reitingWite
         : 0;
 
-    const ourTime = gameData
-        ? isWhite
-            ? gameData.timeWite
-            : gameData.timeBlack
-        : 0;
-
-    const opponentTime = gameData
-        ? isWhite
-            ? gameData.timeBlack
-            : gameData.timeWite
-        : 0;
+    const ourTime = isWhite ? clockWhite : clockBlack;
+    const opponentTime = isWhite ? clockBlack : clockWhite;
 
     const whiteToMove = gameData?.move ?? true;
     const ourIsActive = isWhite ? whiteToMove : !whiteToMove;
+
+    /* ── Resign / Draw handlers ── */
+    const gameId = gameData?.idGame ?? "";
+
+    const handleConfirmResign = useCallback(() => {
+        setResignModalOpen(false);
+        dispatch(resignGame({ gameId, userId: userName }));
+    }, [dispatch, gameId, userName]);
+
+    const handleOpponentDrawClick = useCallback(() => {
+        if (drawOfferedBy === "opponent") {
+            // Соперник предложил ничью — повторное нажатие принимает её без лишних вопросов
+            dispatch(offerDraw({ gameId, userId: userName }));
+            return;
+        }
+        if (drawOfferedBy === "me") {
+            toast.info("Ничья уже предложена — ждём ответа соперника");
+            return;
+        }
+        setDrawModalOpen(true);
+    }, [dispatch, drawOfferedBy, gameId, userName]);
+
+    const handleConfirmDraw = useCallback(() => {
+        setDrawModalOpen(false);
+        dispatch(offerDraw({ gameId, userId: userName }));
+    }, [dispatch, gameId, userName]);
 
     const topPlayer =
         bottomColor === playerColor
@@ -388,6 +444,11 @@ const GameArea: React.FC = () => {
                     isYou={topPlayer.isYou}
                     isActive={topPlayer.isActive}
                     position="top"
+                    onResignClick={() => setResignModalOpen(true)}
+                    onDrawClick={handleOpponentDrawClick}
+                    drawOffered={drawOfferedBy === "opponent"}
+                    drawOfferSent={drawOfferedBy === "me"}
+                    gameOver={isGameOver}
                 />
 
                 {/* Board area */}
@@ -525,8 +586,36 @@ const GameArea: React.FC = () => {
                     isYou={bottomPlayer.isYou}
                     isActive={bottomPlayer.isActive}
                     position="bottom"
+                    onResignClick={() => setResignModalOpen(true)}
+                    onDrawClick={handleOpponentDrawClick}
+                    drawOffered={drawOfferedBy === "opponent"}
+                    drawOfferSent={drawOfferedBy === "me"}
+                    gameOver={isGameOver}
                 />
             </div>
+
+            {/* ── Модалка подтверждения сдачи партии ── */}
+            <ConfirmDialog
+                open={resignModalOpen}
+                title="Сдача партии"
+                description="Вы уверены, что хотите сдаться? Партия будет засчитана как поражение."
+                confirmText="Да, сдаться"
+                cancelText="Отмена"
+                confirmVariant="danger"
+                onConfirm={handleConfirmResign}
+                onCancel={() => setResignModalOpen(false)}
+            />
+
+            {/* ── Модалка подтверждения предложения ничьей ── */}
+            <ConfirmDialog
+                open={drawModalOpen}
+                title="Предложение ничьей"
+                description="Вы уверены, что хотите предложить ничью?"
+                confirmText="Да, предложить"
+                cancelText="Отмена"
+                onConfirm={handleConfirmDraw}
+                onCancel={() => setDrawModalOpen(false)}
+            />
         </div>
     );
 };

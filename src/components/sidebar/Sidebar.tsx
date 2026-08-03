@@ -1,5 +1,10 @@
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
+import useCurrentGameNavigation from '@hooks/useCurrentGameNavigation';
+import GridViewIcon from '@mui/icons-material/GridView';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
+import LogoutIcon from '@mui/icons-material/Logout';
 import UserMenu from '@components/userMenu/UserMenu';
 import ThemeSwitcher from '@components/themeSwitcher/ThemeSwitcher';
 import Modal from '@components/modal/Modal';
@@ -8,6 +13,7 @@ import s from './Sidebar.module.css';
 
 const Sidebar = () => {
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const { handleCurrentGame, checkingGame } = useCurrentGameNavigation();
 
     return (
         <aside className={s.sidebar} aria-label="Sidebar navigation">
@@ -40,43 +46,36 @@ const Sidebar = () => {
                     to="/home"
                     end
                     className={({ isActive }) => `${s.link} ${isActive ? s.linkActive : ''}`}
-                    style={({ isActive }) => isActive ? {} : { color: 'var(--color-text-secondary)' }}
                 >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="7" height="7" />
-                        <rect x="14" y="3" width="7" height="7" />
-                        <rect x="14" y="14" width="7" height="7" />
-                        <rect x="3" y="14" width="7" height="7" />
-                    </svg>
+                    <GridViewIcon className={s.icon} />
                     Home
                 </NavLink>
                 <NavLink
                     to="/statistic"
                     className={({ isActive }) => `${s.link} ${isActive ? s.linkActive : ''}`}
-                    style={({ isActive }) => isActive ? {} : { color: 'var(--color-text-secondary)' }}
                 >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="20" x2="18" y2="10" />
-                        <line x1="12" y1="20" x2="12" y2="4" />
-                        <line x1="6" y1="20" x2="6" y2="14" />
-                    </svg>
+                    <BarChartIcon className={s.icon} />
                     Statistics
                 </NavLink>
+
+                {/* Current game — показать только если на сервере есть неоконченная партия */}
+                <button
+                    type="button"
+                    onClick={handleCurrentGame}
+                    disabled={checkingGame}
+                    className={s.link}
+                >
+                    <PlayCircleOutlineIcon className={s.icon} />
+                    Current game
+                </button>
 
                 {/* Exit */}
                 <button
                     type="button"
                     onClick={() => setShowLogoutModal(true)}
                     className={`${s.link} ${s.linkDanger}`}
-                    style={{ color: '#ef4444' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                        <polyline points="16 17 21 12 16 7" />
-                        <line x1="21" x2="9" y1="12" y2="12" />
-                    </svg>
+                    <LogoutIcon className={s.icon} />
                     Exit
                 </button>
                 {showLogoutModal && (

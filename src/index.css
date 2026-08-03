@@ -15,6 +15,12 @@ main {
   animation: fadeIn 0.3s ease-out;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 html {
   box-sizing: border-box;
   overflow-x: hidden;
@@ -37,10 +43,10 @@ code {
   font-family: 'source-code-pro', Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-.root {
-  display: flex;
+/* #root — корневой контейнер React. Стили по id (не .root — такого класса нет).
+   min-height гарантирует, что контент может вырасти выше вьюпорта и скроллится. */
+#root {
   min-height: 100vh;
-  flex-direction: column;
 }
 
 /* ── Scrollbar ── */

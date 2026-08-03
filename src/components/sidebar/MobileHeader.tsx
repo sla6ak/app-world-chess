@@ -1,14 +1,27 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
+import GridViewIcon from "@mui/icons-material/GridView";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
+import LogoutIcon from "@mui/icons-material/Logout";
+import MenuIcon from "@mui/icons-material/Menu";
+import CloseIcon from "@mui/icons-material/Close";
 import UserMenu from "@components/userMenu/UserMenu";
 import ThemeSwitcher from "@components/themeSwitcher/ThemeSwitcher";
 import Modal from "@components/modal/Modal";
 import ModalLogOut from "@features/auth/ModalLogOut";
+import useCurrentGameNavigation from "@hooks/useCurrentGameNavigation";
 import s from "./MobileHeader.module.css";
 
 const MobileHeader = () => {
     const [menuOpen, setMenuOpen] = useState(false);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+    const { handleCurrentGame, checkingGame } = useCurrentGameNavigation();
+
+    const handleCurrentGameClick = () => {
+        setMenuOpen(false);
+        handleCurrentGame();
+    };
 
     return (
         <>
@@ -37,12 +50,9 @@ const MobileHeader = () => {
                     onClick={() => setMenuOpen(true)}
                     className={s.menuBtn}
                     aria-label="Open menu"
+                    style={{ color: "var(--color-text-primary)" }}
                 >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--color-text-primary)" }}>
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <line x1="3" y1="12" x2="21" y2="12" />
-                        <line x1="3" y1="18" x2="21" y2="18" />
-                    </svg>
+                    <MenuIcon />
                 </button>
             </header>
 
@@ -78,11 +88,9 @@ const MobileHeader = () => {
                                 onClick={() => setMenuOpen(false)}
                                 className={s.menuBtn}
                                 aria-label="Close menu"
+                                style={{ color: "var(--color-text-secondary)" }}
                             >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--color-text-secondary)" }}>
-                                    <line x1="18" y1="6" x2="6" y2="18" />
-                                    <line x1="6" y1="6" x2="18" y2="18" />
-                                </svg>
+                                <CloseIcon fontSize="small" />
                             </button>
                         </div>
 
@@ -101,12 +109,7 @@ const MobileHeader = () => {
                                 className={({ isActive }) => `${s.panelLink} ${isActive ? s.panelLinkActive : ''}`}
                                 style={({ isActive }) => isActive ? {} : { color: 'var(--color-text-secondary)' }}
                             >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="3" y="3" width="7" height="7" />
-                                    <rect x="14" y="3" width="7" height="7" />
-                                    <rect x="14" y="14" width="7" height="7" />
-                                    <rect x="3" y="14" width="7" height="7" />
-                                </svg>
+                                <GridViewIcon className={s.icon} />
                                 Home
                             </NavLink>
                             <NavLink
@@ -115,13 +118,20 @@ const MobileHeader = () => {
                                 className={({ isActive }) => `${s.panelLink} ${isActive ? s.panelLinkActive : ''}`}
                                 style={({ isActive }) => isActive ? {} : { color: 'var(--color-text-secondary)' }}
                             >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="18" y1="20" x2="18" y2="10" />
-                                    <line x1="12" y1="20" x2="12" y2="4" />
-                                    <line x1="6" y1="20" x2="6" y2="14" />
-                                </svg>
+                                <BarChartIcon className={s.icon} />
                                 Statistics
                             </NavLink>
+
+                            {/* Current game */}
+                            <button
+                                type="button"
+                                onClick={handleCurrentGameClick}
+                                disabled={checkingGame}
+                                className={s.panelLink}
+                            >
+                                <PlayCircleOutlineIcon className={s.icon} />
+                                Current game
+                            </button>
 
                             {/* Exit */}
                             <button
@@ -131,15 +141,8 @@ const MobileHeader = () => {
                                     setShowLogoutModal(true);
                                 }}
                                 className={`${s.panelLink} ${s.panelLinkDanger}`}
-                                style={{ color: '#ef4444' }}
-                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'}
-                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                                    <polyline points="16 17 21 12 16 7" />
-                                    <line x1="21" x2="9" y1="12" y2="12" />
-                                </svg>
+                                <LogoutIcon className={s.icon} />
                                 Exit
                             </button>
                         </nav>

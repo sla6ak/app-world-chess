@@ -156,6 +156,55 @@ export const sendGameOver = createAsyncThunk<
 );
 
 /**
+ * resignGame — WS: сдаться в текущей партии.
+ * Сервер зафиксирует поражение и разошлёт 'gameOver' обоим игрокам.
+ */
+export const resignGame = createAsyncThunk<
+    { success: boolean },
+    { gameId: string; userId: string },
+    { state: RootState }
+>(
+    "room/resignGame",
+    async ({ gameId, userId }, { rejectWithValue }) => {
+        try {
+            const room = getRoom();
+            if (!room) {
+                return rejectWithValue("Room is not connected");
+            }
+            room.send("resign_game", { gameId, userId });
+            return { success: true };
+        } catch (error: unknown) {
+            return rejectWithValue(error instanceof Error ? error.message : "Failed to resign");
+        }
+    }
+);
+
+/**
+ * offerDraw — WS: предложить ничью (или принять предложение соперника).
+ * Сервер сам разрулит: если соперник уже предложил — засчитает ничью,
+ * иначе выставит флаг и транслирует 'draw_offered' сопернику.
+ */
+export const offerDraw = createAsyncThunk<
+    { success: boolean },
+    { gameId: string; userId: string },
+    { state: RootState }
+>(
+    "room/offerDraw",
+    async ({ gameId, userId }, { rejectWithValue }) => {
+        try {
+            const room = getRoom();
+            if (!room) {
+                return rejectWithValue("Room is not connected");
+            }
+            room.send("offer_draw", { gameId, userId });
+            return { success: true };
+        } catch (error: unknown) {
+            return rejectWithValue(error instanceof Error ? error.message : "Failed to offer draw");
+        }
+    }
+);
+
+/**
  * reconnectToActiveGame — перевіряє, чи є у користувача активна (не завершена) гра,
  * і підключається до неї через WebSocket.
  *
@@ -205,6 +254,8 @@ const roomThunks = {
     connectToRoom,
     sendGameMove,
     sendGameOver,
+    resignGame,
+    offerDraw,
     reconnectToActiveGame,
 };
 export default roomThunks;

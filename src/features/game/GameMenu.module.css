@@ -4,6 +4,26 @@
   background-color: var(--color-bg-primary);
 }
 
+.warningBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 72rem;
+  margin: 0.75rem auto;
+  padding: 0.625rem 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid rgba(151, 0, 0, 0.2);
+}
+
+.warningBanner svg {
+  flex-shrink: 0;
+  color: var(--color-error);
+}
+
 .header {
   max-width: 72rem;
   margin-left: auto;
@@ -82,12 +102,12 @@
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(102, 53, 23, 0.35);
+  box-shadow: var(--shadow-glow), 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
 .card:active {
-  transform: translateY(1px);
-  box-shadow: 0 2px 6px rgba(102, 53, 23, 0.2);
+  transform: translateY(0);
+  box-shadow: var(--shadow-card);
 }
 
 .card:disabled {

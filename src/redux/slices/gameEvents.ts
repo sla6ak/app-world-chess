@@ -17,12 +17,16 @@ export interface GameOverData {
     ratingChange: number;
 }
 
+/** Кто сейчас держит активное предложение ничьей (in-memory, сбрасывается после хода). */
+export type DrawOfferedBy = "me" | "opponent" | null;
+
 export interface GameEventsState {
     status: GameStatus;
     searchData: SearchGameData | null;
     gameOverData: GameOverData | null;
     searchGameId: string | null;
     pollingInterval: ReturnType<typeof setInterval> | null;
+    drawOfferedBy: DrawOfferedBy;
 }
 
 const initialState: GameEventsState = {
@@ -31,6 +35,7 @@ const initialState: GameEventsState = {
     gameOverData: null,
     searchGameId: null,
     pollingInterval: null,
+    drawOfferedBy: null,
 };
 
 const gameEventsSlice = createSlice({
@@ -49,17 +54,26 @@ const gameEventsSlice = createSlice({
             state.status = "playing";
             state.searchData = null;
             state.gameOverData = null;
+            state.drawOfferedBy = null;
         },
         setGameOver(state, action: PayloadAction<GameOverData>) {
             state.status = "gameover";
             state.gameOverData = action.payload;
             state.searchData = null;
+            state.drawOfferedBy = null;
+        },
+        setDrawOffer(state, action: PayloadAction<Exclude<DrawOfferedBy, null>>) {
+            state.drawOfferedBy = action.payload;
+        },
+        clearDrawOffer(state) {
+            state.drawOfferedBy = null;
         },
         resetGameEvents(state) {
             state.status = "idle";
             state.searchData = null;
             state.gameOverData = null;
             state.searchGameId = null;
+            state.drawOfferedBy = null;
             if (state.pollingInterval) {
                 clearInterval(state.pollingInterval);
                 state.pollingInterval = null;
@@ -68,8 +82,15 @@ const gameEventsSlice = createSlice({
     },
 });
 
-export const { setSearchMode, setGameStart, setGameOver, resetGameEvents, setSearchGameId } =
-    gameEventsSlice.actions;
+export const {
+    setSearchMode,
+    setGameStart,
+    setGameOver,
+    setDrawOffer,
+    clearDrawOffer,
+    resetGameEvents,
+    setSearchGameId,
+} = gameEventsSlice.actions;
 
 export const gameEventsReducer = gameEventsSlice.reducer;
 export { gameEventsSlice };

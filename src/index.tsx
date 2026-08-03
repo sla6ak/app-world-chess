@@ -24,7 +24,6 @@ root.render(
                     pauseOnFocusLoss
                     draggable
                     pauseOnHover
-                    theme="auto"
                     transition={Zoom}
                 />
                 <App />
