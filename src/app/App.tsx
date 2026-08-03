@@ -106,6 +106,7 @@ function AppContent() {
                         typeGame: gameData.typeGame || "standart",
                         timeControl: gameData.timeControl || 180,
                         timePluse: gameData.timePluse || 0,
+                        fen: (gameData as any).pgn || undefined, // using pgn field for now
                     };
                     dispatch(roomSlice.actions.gameStartSuccess(restored));
                     const resolvedColor = resolvePlayerColor(userName, restored);
@@ -165,6 +166,7 @@ function AppContent() {
                 typeGame: string;
                 timeControl: number;
                 timePluse: number;
+                fen?: string;
             };
             console.log("[WS] gameStart — idGame:", msg.idGame,
                 "| white:", msg.playerWite,
@@ -186,6 +188,7 @@ function AppContent() {
                     typeGame: msg.typeGame,
                     timeControl: msg.timeControl,
                     timePluse: msg.timePluse,
+                    fen: msg.fen,
                 })
             );
             dispatch(setGameStart());
@@ -197,14 +200,34 @@ function AppContent() {
 
         const handleGameOver = (message: unknown) => {
             console.log("[WS] Received 'gameOver' event:", JSON.stringify(message));
-            const msg = message as { gameOverData: { result: GameResult; ratingChange: number } };
+            const msg = message as {
+                gameOverData?: {
+                    result: string;
+                    winnerRole?: string | null;
+                    endReason?: string;
+                    ratingChange: number;
+                };
+            };
             if (msg.gameOverData) {
-                console.log("[WS] gameOver — result:", msg.gameOverData.result,
-                    "| ratingChange:", msg.gameOverData.ratingChange);
+                const god = msg.gameOverData;
+                console.log("[WS] gameOver — result:", god.result,
+                    "| winnerRole:", god.winnerRole, "| endReason:", god.endReason);
+                const gameData = (store.getState() as RootState).room.gameData;
+                const myRole = gameData ? resolvePlayerColor(userName, {
+                    playerWite: gameData.playerWite,
+                    playerBlack: gameData.playerBlack,
+                }) : null;
+                let personal: GameResult;
+                if (god.result === "0.5-0.5") personal = "draw";
+                else if (
+                    (god.result === "1-0" && myRole === "wite") ||
+                    (god.result === "0-1" && myRole === "black")
+                ) personal = "win";
+                else personal = "loss";
                 dispatch(
                     setGameOver({
-                        result: msg.gameOverData.result,
-                        ratingChange: msg.gameOverData.ratingChange,
+                        result: personal,
+                        ratingChange: god.ratingChange,
                     })
                 );
             }
@@ -235,11 +258,73 @@ function AppContent() {
             dispatch(clearDrawOffer());
         };
 
+        const handleMoveMade = (message: unknown) => {
+            console.log("[WS] Received 'move_made':", JSON.stringify(message));
+            const msg = message as {
+                move?: { from: string; to: string; promotion?: string };
+                fen?: string;
+                position?: string[];
+                timers?: { white: number; black: number };
+                nextTurn?: string;
+            };
+            // Обновляем состояние через GameArea (у него есть свой обработчики)
+            // Здесь только подчищаем любые предложения ничьей
+            dispatch(clearDrawOffer());
+        };
+
+        const handleMoveError = (message: unknown) => {
+            console.log("[WS] Received 'move_error':", JSON.stringify(message));
+            const msg = message as {
+                code: string;
+                message: string;
+                fen?: string;
+                position?: string;
+            };
+            toast.error(msg.message || "Invalid move");
+        };
+
+        const handleTimers = (message: unknown) => {
+            // Авторитетные часы от сервера каждую секунду
+            const timers = message as { white: number; black: number };
+            const current = (store.getState() as RootState).room.gameData;
+            if (!current) return;
+            dispatch(
+                roomSlice.actions.gameStartSuccess({
+                    ...current,
+                    timeWite: timers.white,
+                    timeBlack: timers.black,
+                })
+            );
+        };
+
+        const handleGameResumed = (message: unknown) => {
+            console.log("[WS] Received 'gameResumed':", JSON.stringify(message));
+            const msg = message as {
+                timers?: { white: number; black: number };
+                fen?: string;
+            };
+            const current = (store.getState() as RootState).room.gameData;
+            if (current && msg.timers) {
+                dispatch(
+                    roomSlice.actions.gameStartSuccess({
+                        ...current,
+                        timeWite: msg.timers.white,
+                        timeBlack: msg.timers.black,
+                    })
+                );
+            }
+            toast.info("Игра восстановлена");
+        };
+
         const unsubscribeGame = room.onMessage("game", handleGameMessage);
         const unsubscribeGameStart = room.onMessage("gameStart", handleGameStart);
         const unsubscribeGameOver = room.onMessage("gameOver", handleGameOver);
         const unsubscribeDrawOffered = room.onMessage("draw_offered", handleDrawOffered);
         const unsubscribeGameDeclinedDraw = room.onMessage("draw_cleared", handleGameDeclinedDraw);
+        const unsubscribeMoveMade = room.onMessage("move_made", handleMoveMade);
+        const unsubscribeMoveError = room.onMessage("move_error", handleMoveError);
+        const unsubscribeTimers = room.onMessage("timers", handleTimers);
+        const unsubscribeGameResumed = room.onMessage("gameResumed", handleGameResumed);
 
         return () => {
             unsubscribeGame();
@@ -247,6 +332,10 @@ function AppContent() {
             unsubscribeGameOver();
             unsubscribeDrawOffered();
             unsubscribeGameDeclinedDraw();
+            unsubscribeMoveMade();
+            unsubscribeMoveError();
+            unsubscribeTimers();
+            unsubscribeGameResumed();
         };
     }, [roomId, dispatch, navigate, token, color, userName]);
 

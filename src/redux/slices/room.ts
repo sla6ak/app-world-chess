@@ -21,6 +21,7 @@ export interface RoomState {
         typeGame: string;
         timeControl: number;
         timePluse: number;
+        fen?: string;
     } | null;
 }
 
@@ -63,7 +64,7 @@ const roomSlice = createSlice({
         setRoomError(state, action: PayloadAction<string>) {
             state.error = action.payload;
         },
-        gameStartSuccess(state, action: PayloadAction<{ idGame: string; position: string[]; playerWite: string; playerBlack: string; reitingWite: number; reitingBlack: number; timeWite: number; timeBlack: number; move: boolean; message: string; typeGame: string; timeControl: number; timePluse: number }>) {
+        gameStartSuccess(state, action: PayloadAction<{ idGame: string; position: string[]; playerWite: string; playerBlack: string; reitingWite: number; reitingBlack: number; timeWite: number; timeBlack: number; move: boolean; message: string; typeGame: string; timeControl: number; timePluse: number; fen?: string }>) {
             state.gameStarted = true;
             state.gameData = action.payload;
         },

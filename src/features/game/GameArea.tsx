@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { Chess } from "chess.js";
 import PlayerInfo from "@components/playerInfo/PlayerInfo";
 import GameHeader from "@components/gameHeader/GameHeader";
 import ConfirmDialog from "@components/modal/ConfirmDialog";
 import showFigure from "@helpers/showFigure";
+import { boardIndexToSquare, squareToBoardIndex } from "@helpers/boardCoords";
 import { getRoom } from "@services/roomManager";
 import type { RootState, AppDispatch } from "@redux/store";
 import { selectPlayerColor } from "@redux/slices/room";
@@ -27,15 +29,14 @@ interface LastMove {
 /* ───────────────────────────────────────────
    Constants
    ─────────────────────────────────────────── */
-const START_POSITION =
-    "rnbqkbnrpppppppp88888888888888888888888888888888PPPPPPPPRNBQKBNR";
+const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const EMPTY = "8";
 
 /* ───────────────────────────────────────────
    Helpers
    ─────────────────────────────────────────── */
 
-/** Convert display index → board index (handles flip for black player) */
+/** Convert display index to board index (handles flip for black player) */
 const displayToBoard = (displayIdx: number, flipped: boolean): number => {
     if (!flipped) return displayIdx;
     const row = Math.floor(displayIdx / 8);
@@ -43,108 +44,69 @@ const displayToBoard = (displayIdx: number, flipped: boolean): number => {
     return (7 - row) * 8 + col;
 };
 
-/** Get row and col from a flat board index */
-const rowOf = (i: number) => Math.floor(i / 8);
-const colOf = (i: number) => i % 8;
-
-/** Basic move validator — returns target board indices */
-const getValidMoves = (board: Square[], index: number): number[] => {
-    const piece = board[index].figure;
-    if (!piece || piece === EMPTY) return [];
-
-    const row = rowOf(index);
-    const isWhite = piece === piece.toUpperCase();
-    const type = piece.toLowerCase();
-    const moves: number[] = [];
-
-    const isEnemy = (target: Square) =>
-        target.figure !== EMPTY &&
-        target.figure !== "" &&
-        (isWhite
-            ? target.figure === target.figure.toLowerCase()
-            : target.figure === target.figure.toUpperCase());
-
-    const addIfValid = (to: number) => {
-        if (to < 0 || to > 63) return;
-        const target = board[to];
-        if (target.figure === EMPTY || target.figure === "") {
-            moves.push(to);
-        } else if (isEnemy(target)) {
-            moves.push(to);
-        }
-    };
-
-    const slide = (deltas: number[]) => {
-        for (const delta of deltas) {
-            let cur = index;
-            while (true) {
-                const curCol = cur % 8;
-                const next = cur + delta;
-                if (next < 0 || next > 63) break;
-                if (delta === 1 && curCol === 7) break;
-                if (delta === -1 && curCol === 0) break;
-                if (delta === 9 && curCol === 7) break;
-                if (delta === 7 && curCol === 0) break;
-                if (delta === -9 && curCol === 0) break;
-                if (delta === -7 && curCol === 7) break;
-
-                const target = board[next];
-                if (target.figure === EMPTY || target.figure === "") {
-                    moves.push(next);
-                } else {
-                    if (isEnemy(target)) moves.push(next);
-                    break;
-                }
-                cur = next;
-            }
-        }
-    };
-
-    switch (type) {
-        case "p": {
-            const dir = isWhite ? -8 : 8;
-            const startRow = isWhite ? 6 : 1;
-            const f1 = index + dir;
-            if (f1 >= 0 && f1 < 64 && board[f1].figure === EMPTY) {
-                moves.push(f1);
-                if (row === startRow) {
-                    const f2 = f1 + dir;
-                    if (board[f2].figure === EMPTY) moves.push(f2);
-                }
-            }
-            for (const dc of [-1, 1]) {
-                addIfValid(index + dir + dc);
-            }
-            break;
-        }
-        case "r":
-            slide([8, -8, 1, -1]);
-            break;
-        case "n":
-            for (const m of [17, 15, 10, 6, -6, -10, -15, -17]) {
-                addIfValid(index + m);
-            }
-            break;
-        case "b":
-            slide([9, 7, -9, -7]);
-            break;
-        case "q":
-            slide([9, 7, -9, -7, 8, -8, 1, -1]);
-            break;
-        case "k":
-            for (const m of [9, 7, -9, -7, 8, -8, 1, -1]) {
-                addIfValid(index + m);
-            }
-            break;
+/** FEN to flat 64-char board string (index 0 = a8). */
+const fenToFlat = (fen: string): string => {
+    const boardPart = fen.split(" ")[0];
+    let flat = "";
+    for (const ch of boardPart) {
+        if (ch === "/") continue;
+        if (ch >= "1" && ch <= "8") flat += "8".repeat(Number(ch));
+        else flat += ch;
     }
-
-    return moves;
+    return flat;
 };
 
-/* ───────────────────────────────────────────
-   Component
-   ─────────────────────────────────────────── */
-const GameArea: React.FC = () => {
+/** Get valid moves for a square via chess.js (returns UCI strings like "e2e4"). */
+const getValidMoves = (chess: Chess, boardIdx: number): number[] => {
+    const square = boardIndexToSquare(boardIdx);
+    try {
+        return chess.moves({ square: square as any, verbose: true }).map((m) => {
+            return squareToBoardIndex(m.to);
+        });
+    } catch {
+        return [];
+    }
+};
+
+/** Check if king of given color is in check. */
+const isKingInCheck = (chess: Chess, isWhite: boolean): boolean => {
+    if (!chess.inCheck()) return false;
+    return chess.turn() === (isWhite ? "w" : "b");
+};
+
+/** Get king square index for a color. */
+const findKingSquare = (chess: Chess, isWhite: boolean): number => {
+    const board = chess.board();
+    for (let r = 0; r < 8; r++) {
+        for (let f = 0; f < 8; f++) {
+            const piece = board[r][f];
+            if (
+                piece &&
+                piece.type === "k" &&
+                piece.color === (isWhite ? "w" : "b")
+            ) {
+                return squareToBoardIndex(piece.square);
+            }
+        }
+    }
+    return -1;
+};
+
+/** Check if move is pawn promotion. Returns "q" if auto-promoting (no UI). */
+const autoPromotionSquare = (
+    from: number,
+    to: number,
+    board: Square[]
+): string => {
+    const piece = board[from]?.figure;
+    if (piece !== "P" && piece !== "p") return "";
+    const toRank = boardIndexToSquare(to)[1];
+    return toRank === "8" || toRank === "1" ? "q" : "";
+};
+
+interface GameAreaProps {}
+
+const GameArea: React.FC<GameAreaProps> = () => {
     const dispatch = useDispatch<AppDispatch>();
     const userName = useSelector((state: RootState) => state.user.userName);
     const gameData = useSelector((state: RootState) => state.room.gameData);
@@ -152,104 +114,124 @@ const GameArea: React.FC = () => {
     const drawOfferedBy = useSelector((state: RootState) => state.gameEvents.drawOfferedBy);
     const isGameOver = gameStatus === "gameover";
 
-    // ── Modals ──
     const [resignModalOpen, setResignModalOpen] = useState(false);
     const [drawModalOpen, setDrawModalOpen] = useState(false);
 
-    // ── Clocks: локальный таймер, инициализируется временем из настроек режима игры ──
-    const initialClock = Math.max(gameData?.timeControl ?? 180, 0);
-    const [clockWhite, setClockWhite] = useState<number>(
-        gameData?.timeWite || initialClock,
-    );
-    const [clockBlack, setClockBlack] = useState<number>(
-        gameData?.timeBlack || initialClock,
-    );
-
-    useEffect(() => {
-        setClockWhite(gameData?.timeWite || initialClock);
-        setClockBlack(gameData?.timeBlack || initialClock);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gameData?.idGame, gameData?.timeWite, gameData?.timeBlack]);
-
-    useEffect(() => {
-        if (isGameOver) return;
-        const timer = setInterval(() => {
-            const isWhiteMove = gameData?.move ?? true;
-            if (isWhiteMove) {
-                setClockWhite((t) => Math.max(0, t - 1));
-            } else {
-                setClockBlack((t) => Math.max(0, t - 1));
-            }
-        }, 1000);
-        return () => clearInterval(timer);
-    }, [gameData?.move, isGameOver]);
-
-    // Explicit who-is-who check: our color is derived from the match between
-    // the authorized user and the game's white/black player names.
-    // Defaults (games before matching completes) show the white perspective.
-    const isWhite = useSelector(selectPlayerColor) !== "black";
-    const [boardFlipped, setBoardFlipped] = useState(false);
-
-    // ── Board state ──
+    // ── Chess.js engine (local mirror for validation) ──
+    const chessRef = useRef<Chess>(new Chess());
     const [board, setBoard] = useState<Square[]>([]);
-    const [activFigure, setActivFigure] = useState<{ _id: number; figure: string }>({
-        _id: -1,
-        figure: "",
-    });
+    const [activFigure, setActivFigure] = useState<{ _id: number; figure: string }>({ _id: -1, figure: "" });
     const [validMoves, setValidMoves] = useState<number[]>([]);
     const [lastMove, setLastMove] = useState<LastMove | null>(null);
     const [hoveredSquare, setHoveredSquare] = useState<number | null>(null);
     const [animatingSquare, setAnimatingSquare] = useState<number | null>(null);
-    const boardRef = useRef<Square[]>([]);
 
-    // Our color is always at the bottom by default;
-    // flip only via the flip button (to view from the opponent's side).
-    const playerColor = isWhite ? "w" : "b";
+    const isWhite = useSelector(selectPlayerColor) !== "black";
+    const [boardFlipped, setBoardFlipped] = useState(false);
+
+    // Clocks from server timers
+    const timeWite = gameData?.timeWite ?? 180;
+    const timeBlack = gameData?.timeBlack ?? 180;
+    const [clockWhite, setClockWhite] = useState(timeWite);
+    const [clockBlack, setClockBlack] = useState(timeBlack);
+
+    // Sync clocks from server state
+    useEffect(() => {
+        setClockWhite(gameData?.timeWite ?? 180);
+        setClockBlack(gameData?.timeBlack ?? 180);
+    }, [gameData?.timeWite, gameData?.timeBlack, gameData?.idGame]);
+
+    // Local tick (server authoritative, client just displays)
+    useEffect(() => {
+        if (isGameOver) return;
+        const timer = setInterval(() => {
+            const isWhiteMove = gameData?.move ?? true;
+            if (isWhiteMove) setClockWhite((t) => Math.max(0, t - 1));
+            else setClockBlack((t) => Math.max(0, t - 1));
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [gameData?.move, isGameOver]);
+
     const flipped = boardFlipped;
+    const playerColor = isWhite ? "w" : "b";
     const bottomColor: "w" | "b" = !flipped ? playerColor : playerColor === "w" ? "b" : "w";
 
-    const initializeBoard = useCallback((position: string[]) => {
-        const pos = position && position.length > 0 ? position[0] : START_POSITION;
-        const arr = pos.split("");
-        const newBoard: Square[] = [];
-        for (let i = 0; i < 64; i++) {
-            newBoard.push({ _id: i, figure: arr[i] || EMPTY });
+    /* ── Initialize from FEN ── */
+    const initializeFromFen = useCallback((fen: string) => {
+        try {
+            chessRef.current.load(fen);
+            const flat = fenToFlat(fen);
+            const newBoard: Square[] = [];
+            for (let i = 0; i < 64; i++) {
+                newBoard.push({ _id: i, figure: flat[i] || EMPTY });
+            }
+            setBoard(newBoard);
+            console.log("[GameArea] Board initialized from FEN:", fen);
+        } catch (e) {
+            console.error("[GameArea] Invalid FEN:", fen, e);
+            toast.error("Ошибка восстановления позиции");
         }
-        boardRef.current = newBoard;
-        setBoard(newBoard);
     }, []);
 
+    /* ── Initialize from gameData (Redux) ── */
     useEffect(() => {
-        if (gameData?.position) {
-            initializeBoard(gameData.position);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        const fen = gameData?.fen || START_FEN;
+        initializeFromFen(fen);
+    }, [gameData?.idGame, gameData?.fen, initializeFromFen]);
 
-    useEffect(() => {
-        if (gameData?.position && gameData.position.length > 0) {
-            initializeBoard(gameData.position);
-        }
-    }, [gameData, initializeBoard]);
-
+    /* ── Listen to server messages ── */
     useEffect(() => {
         const room = getRoom();
         if (!room) return;
-        const handleGame = (message: unknown) => {
-            const msg = message as { position?: string[] };
-            if (msg.position) {
-                initializeBoard(msg.position);
+
+        const handleMoveMade = (message: unknown) => {
+            const msg = message as { fen?: string; move?: { from: string; to: string } };
+            if (msg.fen) {
+                initializeFromFen(msg.fen);
+                setLastMove({
+                    from: msg.move ? squareToBoardIndex(msg.move.from) : -1,
+                    to: msg.move ? squareToBoardIndex(msg.move.to) : -1,
+                });
             }
         };
-        const unsubscribe = room.onMessage("game", handleGame);
-        return () => unsubscribe();
-    }, [initializeBoard]);
+
+        const handleMoveError = (message: unknown) => {
+            const msg = message as { message: string; fen: string };
+            toast.error(msg.message || "Invalid move");
+            if (msg.fen) initializeFromFen(msg.fen);
+        };
+
+        const handleGameResumed = (message: unknown) => {
+            const msg = message as { fen: string; timers: { white: number; black: number } };
+            if (msg.fen) initializeFromFen(msg.fen);
+            if (msg.timers) {
+                setClockWhite(msg.timers.white);
+                setClockBlack(msg.timers.black);
+            }
+        };
+
+        const unsubscribeMove = room.onMessage("move_made", handleMoveMade);
+        const unsubscribeError = room.onMessage("move_error", handleMoveError);
+        const unsubscribeResumed = room.onMessage("gameResumed", handleGameResumed);
+
+        return () => {
+            unsubscribeMove();
+            unsubscribeError();
+            unsubscribeResumed();
+        };
+    }, [initializeFromFen]);
 
     /* ── Click handler ── */
     const handleClick = useCallback(
         (displayIdx: number) => {
+            if (isGameOver) return;
+
             const boardIdx = displayToBoard(displayIdx, flipped);
             const clicked = board[boardIdx];
+            const chess = chessRef.current;
+
+            const isMyTurn = (chess.turn() === "w" && isWhite) || (chess.turn() === "b" && !isWhite);
+            if (!isMyTurn) return;
 
             if (activFigure.figure !== "" && activFigure.figure !== EMPTY) {
                 if (boardIdx === activFigure._id) {
@@ -258,23 +240,65 @@ const GameArea: React.FC = () => {
                     return;
                 }
                 if (validMoves.includes(boardIdx)) {
-                    const fromIdx = activFigure._id;
-                    const piece = board[fromIdx].figure;
-                    setBoard((prev) => {
-                        const next = [...prev];
-                        next[fromIdx] = { _id: fromIdx, figure: EMPTY };
-                        next[boardIdx] = { _id: boardIdx, figure: piece };
-                        return next;
-                    });
-                    setLastMove({ from: fromIdx, to: boardIdx });
-                    setAnimatingSquare(boardIdx);
-                    setTimeout(() => setAnimatingSquare(null), 250);
-                    setActivFigure({ _id: -1, figure: "" });
-                    setValidMoves([]);
+                    const fromSquare = boardIndexToSquare(activFigure._id);
+                    const toSquare = boardIndexToSquare(boardIdx);
+                    const promotion = autoPromotionSquare(activFigure._id, boardIdx, board);
+
+                    try {
+                        const move = chess.move({
+                            from: fromSquare,
+                            to: toSquare,
+                            promotion: promotion || "q",
+                        });
+                        if (move) {
+                            // Optimistic update
+                            const next = [...board];
+                            next[activFigure._id] = {
+                                _id: activFigure._id,
+                                figure: EMPTY,
+                            };
+                            next[boardIdx] = {
+                                _id: boardIdx,
+                                figure:
+                                    move.color === "w"
+                                        ? move.piece.toUpperCase()
+                                        : move.piece,
+                            };
+                            setBoard(next);
+                            setLastMove({ from: activFigure._id, to: boardIdx });
+                            setAnimatingSquare(boardIdx);
+                            setTimeout(() => setAnimatingSquare(null), 250);
+                            setActivFigure({ _id: -1, figure: "" });
+                            setValidMoves([]);
+
+                            // Send to server
+                            const room = getRoom();
+                            room?.send("make_move", {
+                                from: fromSquare,
+                                to: toSquare,
+                                promotion: promotion || "q",
+                            });
+                        }
+                    } catch {
+                        // Re-sync to server state
+                        const fallbackFen = gameData?.fen || START_FEN;
+                        initializeFromFen(fallbackFen);
+                        setActivFigure({ _id: -1, figure: "" });
+                        setValidMoves([]);
+                    }
                     return;
                 }
-                if (clicked.figure !== EMPTY && clicked.figure !== "") {
-                    const moves = getValidMoves(board, boardIdx);
+
+                const isOwnPiece = chess.turn() === playerColor;
+                if (
+                    clicked.figure !== EMPTY &&
+                    clicked.figure !== "" &&
+                    ((chess.turn() === "w" &&
+                        clicked.figure === clicked.figure.toUpperCase()) ||
+                        (chess.turn() === "b" &&
+                            clicked.figure === clicked.figure.toLowerCase()))
+                ) {
+                    const moves = getValidMoves(chess, boardIdx);
                     setActivFigure({ _id: boardIdx, figure: clicked.figure });
                     setValidMoves(moves);
                     return;
@@ -285,12 +309,16 @@ const GameArea: React.FC = () => {
             }
 
             if (clicked.figure !== EMPTY && clicked.figure !== "") {
-                const moves = getValidMoves(board, boardIdx);
+                const isOwnPiece =
+                    (chess.turn() === "w" && clicked.figure === clicked.figure.toUpperCase()) ||
+                    (chess.turn() === "b" && clicked.figure === clicked.figure.toLowerCase());
+                if (!isOwnPiece) return;
+                const moves = getValidMoves(chess, boardIdx);
                 setActivFigure({ _id: boardIdx, figure: clicked.figure });
                 setValidMoves(moves);
             }
         },
-        [board, activFigure, validMoves, flipped]
+        [board, activFigure, validMoves, flipped, isGameOver, isWhite, initializeFromFen, playerColor]
     );
 
     /* ── Hover handlers ── */
@@ -303,24 +331,7 @@ const GameArea: React.FC = () => {
     }, []);
 
     /* ── Derived data ── */
-    const kingInCheck = useMemo(() => {
-        const playerIsWhite = playerColor === "w";
-        const kingChar = playerIsWhite ? "K" : "k";
-        const kingIdx = board.findIndex((sq) => sq.figure === kingChar);
-        if (kingIdx === -1) return false;
-
-        for (let i = 0; i < 64; i++) {
-            const piece = board[i].figure;
-            if (!piece || piece === EMPTY) continue;
-            const isEnemyPiece = playerIsWhite
-                ? piece === piece.toLowerCase()
-                : piece === piece.toUpperCase();
-            if (!isEnemyPiece) continue;
-            const moves = getValidMoves(board, i);
-            if (moves.includes(kingIdx)) return true;
-        }
-        return false;
-    }, [board, playerColor]);
+    const kingInCheck = useMemo(() => isKingInCheck(chessRef.current, playerColor === "w"), [playerColor]);
 
     /* ── Coordinate labels ── */
     const fileLabels = useMemo(() => {
@@ -330,33 +341,14 @@ const GameArea: React.FC = () => {
 
     const rankLabels = useMemo(() => {
         const ranks = ["1", "2", "3", "4", "5", "6", "7", "8"];
-        return flipped ? [...ranks] : [...ranks].reverse();
+        return flipped ? ranks : [...ranks].reverse();
     }, [flipped]);
 
     /* ── Derived player info ── */
-    const ourName = gameData
-        ? isWhite
-            ? gameData.playerWite
-            : gameData.playerBlack
-        : "";
-
-    const opponentName = gameData
-        ? isWhite
-            ? gameData.playerBlack
-            : gameData.playerWite
-        : "";
-
-    const ourRating = gameData
-        ? isWhite
-            ? gameData.reitingWite
-            : gameData.reitingBlack
-        : 0;
-
-    const opponentRating = gameData
-        ? isWhite
-            ? gameData.reitingBlack
-            : gameData.reitingWite
-        : 0;
+    const ourName = gameData ? (isWhite ? gameData.playerWite : gameData.playerBlack) : "";
+    const opponentName = gameData ? (isWhite ? gameData.playerBlack : gameData.playerWite) : "";
+    const ourRating = gameData ? (isWhite ? gameData.reitingWite : gameData.reitingBlack) : 0;
+    const opponentRating = gameData ? (isWhite ? gameData.reitingBlack : gameData.reitingWite) : 0;
 
     const ourTime = isWhite ? clockWhite : clockBlack;
     const opponentTime = isWhite ? clockBlack : clockWhite;
@@ -364,7 +356,6 @@ const GameArea: React.FC = () => {
     const whiteToMove = gameData?.move ?? true;
     const ourIsActive = isWhite ? whiteToMove : !whiteToMove;
 
-    /* ── Resign / Draw handlers ── */
     const gameId = gameData?.idGame ?? "";
 
     const handleConfirmResign = useCallback(() => {
@@ -374,7 +365,6 @@ const GameArea: React.FC = () => {
 
     const handleOpponentDrawClick = useCallback(() => {
         if (drawOfferedBy === "opponent") {
-            // Соперник предложил ничью — повторное нажатие принимает её без лишних вопросов
             dispatch(offerDraw({ gameId, userId: userName }));
             return;
         }
@@ -392,50 +382,19 @@ const GameArea: React.FC = () => {
 
     const topPlayer =
         bottomColor === playerColor
-            ? {
-                  name: opponentName || "Opponent",
-                  rating: opponentRating,
-                  time: opponentTime,
-                  isWhite: !isWhite,
-                  isYou: false,
-                  isActive: !ourIsActive,
-              }
-            : {
-                  name: ourName || userName || "You",
-                  rating: ourRating,
-                  time: ourTime,
-                  isWhite,
-                  isYou: true,
-                  isActive: ourIsActive,
-              };
+            ? { name: opponentName || "Opponent", rating: opponentRating, time: opponentTime, isWhite: !isWhite, isYou: false, isActive: !ourIsActive }
+            : { name: ourName || userName || "You", rating: ourRating, time: ourTime, isWhite, isYou: true, isActive: ourIsActive };
 
     const bottomPlayer =
         bottomColor === playerColor
-            ? {
-                  name: ourName || userName || "You",
-                  rating: ourRating,
-                  time: ourTime,
-                  isWhite,
-                  isYou: true,
-                  isActive: ourIsActive,
-              }
-            : {
-                  name: opponentName || "Opponent",
-                  rating: opponentRating,
-                  time: opponentTime,
-                  isWhite: !isWhite,
-                  isYou: false,
-                  isActive: !ourIsActive,
-              };
+            ? { name: ourName || userName || "You", rating: ourRating, time: ourTime, isWhite, isYou: true, isActive: ourIsActive }
+            : { name: opponentName || "Opponent", rating: opponentRating, time: opponentTime, isWhite: !isWhite, isYou: false, isActive: !ourIsActive };
 
     return (
-        /* ── Page Wrapper: 100vw × 100dvh, centered, no scroll ── */
         <div className={s.pageWrapper}>
             <GameHeader />
 
-            {/* ── Game Container: vertical stack, auto-scaled ── */}
             <div className={s.gameContainer}>
-                {/* Top bar — shows our info when flipped to opponent's side */}
                 <PlayerInfo
                     playerName={topPlayer.name}
                     rating={topPlayer.rating}
@@ -451,133 +410,78 @@ const GameArea: React.FC = () => {
                     gameOver={isGameOver}
                 />
 
-                {/* Board area */}
                 <div className={s.boardWrap}>
-                    <button
-                        className={s.flipBtn}
-                        onClick={() => setBoardFlipped((prev) => !prev)}
-                        title="Перевернуть доску"
-                        aria-label="Перевернуть доску"
-                        type="button"
-                    >
+                    <button className={s.flipBtn} onClick={() => setBoardFlipped((prev) => !prev)} title="Flip" type="button">
                         ⇅
                     </button>
 
-                    {/* ── Chess Board with coordinate frame ── */}
                     <div className={s.boardWrapper}>
-                        {/* Top file labels (a–h) */}
                         <div className={s.topLabels} aria-hidden="true">
                             {fileLabels.map((label) => (
-                                <span key={label} className={s.topLabel}>
-                                    {label}
-                                </span>
+                                <span key={label} className={s.topLabel}>{label}</span>
                             ))}
                         </div>
 
-                        {/* Left rank labels (1–8) */}
                         <div className={s.rankLabels} aria-hidden="true">
                             {rankLabels.map((label) => (
-                                <span key={label} className={s.rankLabel}>
-                                    {label}
-                                </span>
+                                <span key={label} className={s.rankLabel}>{label}</span>
                             ))}
                         </div>
 
-                        {/* 8×8 grid */}
-                        <div
-                            className={s.grid}
-                            role="grid"
-                            aria-label="Шахматная доска"
-                        >
+                        <div className={s.grid} role="grid" aria-label="Chess board">
                             {board.map((_element, displayIdx) => {
                                 const boardIdx = displayToBoard(displayIdx, flipped);
                                 const square = board[boardIdx];
-                                const row = rowOf(displayIdx);
-                                const col = colOf(displayIdx);
+                                const row = Math.floor(displayIdx / 8);
+                                const col = displayIdx % 8;
                                 const isDark = (row + col) % 2 === 1;
 
                                 const isSelected = activFigure._id === boardIdx;
                                 const isValidMove = validMoves.includes(boardIdx);
-                                const isLastMove =
-                                    lastMove?.from === boardIdx ||
-                                    lastMove?.to === boardIdx;
+                                const isLastMove = lastMove?.from === boardIdx || lastMove?.to === boardIdx;
                                 const isHovered = hoveredSquare === displayIdx;
                                 const isAnimating = animatingSquare === displayIdx;
-                                const isCheck =
-                                    kingInCheck &&
-                                    square.figure ===
-                                        (playerColor === "w" ? "K" : "k");
+                                const isCheck = kingInCheck && square.figure === (playerColor === "w" ? "K" : "k");
                                 const showMoveDot = isValidMove && !isSelected;
 
                                 return (
                                     <div
                                         key={displayIdx}
-                                        className={`${s.cell} ${
-                                            isDark ? s.dark : s.light
-                                        } ${isSelected ? s.selected : ""} ${
-                                            isLastMove ? s.lastMove : ""
-                                        } ${isValidMove ? s.validMove : ""} ${
-                                            isHovered ? s.hovered : ""
-                                        } ${isAnimating ? s.animating : ""} ${
-                                            isCheck ? s.check : ""
-                                        }`}
+                                        className={`${s.cell} ${isDark ? s.dark : s.light} ${isSelected ? s.selected : ""} ${isLastMove ? s.lastMove : ""} ${isValidMove ? s.validMove : ""} ${isHovered ? s.hovered : ""} ${isAnimating ? s.animating : ""} ${isCheck ? s.check : ""}`}
                                         role="gridcell"
                                         aria-label={`${fileLabels[col]}${rankLabels[row]}`}
                                         onClick={() => handleClick(displayIdx)}
-                                        onMouseEnter={() =>
-                                            handleMouseEnter(displayIdx)
-                                        }
+                                        onMouseEnter={() => handleMouseEnter(displayIdx)}
                                         onMouseLeave={handleMouseLeave}
                                     >
-                                        {square.figure !== EMPTY &&
-                                            square.figure !== "" && (
-                                                <img
-                                                    src={showFigure(
-                                                        boardIdx,
-                                                        square.figure
-                                                    )}
-                                                    alt={square.figure}
-                                                    className={`${s.piece} ${
-                                                        isSelected
-                                                            ? s.pieceSelected
-                                                            : ""
-                                                    } ${
-                                                        isHovered && !isSelected
-                                                            ? s.pieceHovered
-                                                            : ""
-                                                    }`}
-                                                    draggable={false}
-                                                />
-                                            )}
-                                        {showMoveDot && (
-                                            <span className={s.moveDot} />
+                                        {square.figure !== EMPTY && square.figure !== "" && (
+                                            <img
+                                                src={showFigure(boardIdx, square.figure)}
+                                                alt={square.figure}
+                                                className={`${s.piece} ${isSelected ? s.pieceSelected : ""} ${isHovered && !isSelected ? s.pieceHovered : ""}`}
+                                                draggable={false}
+                                            />
                                         )}
+                                        {showMoveDot && <span className={s.moveDot} />}
                                     </div>
                                 );
                             })}
                         </div>
 
-                        {/* Right rank labels (1–8) */}
                         <div className={s.rightLabels} aria-hidden="true">
                             {rankLabels.map((label) => (
-                                <span key={label} className={s.rightLabel}>
-                                    {label}
-                                </span>
+                                <span key={label} className={s.rightLabel}>{label}</span>
                             ))}
                         </div>
 
-                        {/* Bottom file labels (a–h) */}
                         <div className={s.fileLabels} aria-hidden="true">
                             {fileLabels.map((label) => (
-                                <span key={label} className={s.fileLabel}>
-                                    {label}
-                                </span>
+                                <span key={label} className={s.fileLabel}>{label}</span>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Bottom bar — always our side by default */}
                 <PlayerInfo
                     playerName={bottomPlayer.name}
                     rating={bottomPlayer.rating}
@@ -594,25 +498,23 @@ const GameArea: React.FC = () => {
                 />
             </div>
 
-            {/* ── Модалка подтверждения сдачи партии ── */}
             <ConfirmDialog
                 open={resignModalOpen}
-                title="Сдача партии"
-                description="Вы уверены, что хотите сдаться? Партия будет засчитана как поражение."
-                confirmText="Да, сдаться"
-                cancelText="Отмена"
+                title="Resign"
+                description="Are you sure you want to resign? The game will be counted as a loss."
+                confirmText="Yes, resign"
+                cancelText="Cancel"
                 confirmVariant="danger"
                 onConfirm={handleConfirmResign}
                 onCancel={() => setResignModalOpen(false)}
             />
 
-            {/* ── Модалка подтверждения предложения ничьей ── */}
             <ConfirmDialog
                 open={drawModalOpen}
-                title="Предложение ничьей"
-                description="Вы уверены, что хотите предложить ничью?"
-                confirmText="Да, предложить"
-                cancelText="Отмена"
+                title="Offer draw"
+                description="Do you want to offer a draw?"
+                confirmText="Yes, offer"
+                cancelText="Cancel"
                 onConfirm={handleConfirmDraw}
                 onCancel={() => setDrawModalOpen(false)}
             />
