@@ -32,11 +32,14 @@ const GameMenu: React.FC<PropTypes> = () => {
         setTypeGame((prev) => (prev === "standart" ? "fisher" : "standart"));
     };
 
-    const handleStartSearch = async (timeControl: number, timePluse: number) => {
+    // minutes — значение на кнопке (UI); в сеть уходит timeControlSec = minutes*60, timePluse уже в секундах.
+    const handleStartSearch = async (minutes: number, timePluse: number) => {
         if (isSearching && searchGameId) {
             await dispatch(cancelSearch(searchGameId)).unwrap();
             dispatch(resetGameEvents());
         }
+
+        const timeControl = minutes * 60;
 
         setCreatingRoom(true);
         try {
@@ -55,7 +58,7 @@ const GameMenu: React.FC<PropTypes> = () => {
                     .then(() => {
                         dispatch(connectRoomSuccess({ roomId: gameId }));
                         dispatch(setSearchMode({ typeGame, timeControl, timePluse }));
-                        toast.info(`Game found! (${timeControl} + ${timePluse} min, ${typeGame})`);
+                        toast.info(`Game found! (${minutes}min + ${timePluse}s, ${typeGame})`);
                     })
                     .catch((err) => {
                         toast.error("Failed to connect to game room");
@@ -70,7 +73,7 @@ const GameMenu: React.FC<PropTypes> = () => {
                     .then(() => {
                         dispatch(connectRoomSuccess({ roomId: gameId }));
                         dispatch(setSearchMode({ typeGame, timeControl, timePluse }));
-                        toast.info(`Waiting for opponent (${timeControl} + ${timePluse} min, ${typeGame})...`);
+                        toast.info(`Waiting for opponent (${minutes}min + ${timePluse}s, ${typeGame})...`);
                     })
                     .catch((err) => {
                         toast.error("Failed to connect to game room");
@@ -98,6 +101,7 @@ const GameMenu: React.FC<PropTypes> = () => {
         toast.info("Game search cancelled");
     };
 
+    // tc — минуты (только для отображения), tp — секунды инкремента.
     const timeControls = [
         { tc: 1, tp: 0, label: "1min" },
         { tc: 3, tp: 0, label: "3min" },
@@ -108,6 +112,7 @@ const GameMenu: React.FC<PropTypes> = () => {
         { tc: 10, tp: 5, label: "10min+5s" },
         { tc: 15, tp: 10, label: "15min+10s" },
         { tc: 30, tp: 30, label: "30min+30s" },
+        { tc: 0.5, tp: 1, label: "30s+1s", test: true }, // тестовый сверхбыстрый режим
     ];
 
     return (

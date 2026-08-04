@@ -144,26 +144,46 @@ const GameArea: React.FC<GameAreaProps> = () => {
         }
     }, [isWhite, autoFlipDone]);
 
-    // Clocks from server timers
-    const timeWite = gameData?.timeWite ?? 180;
-    const timeBlack = gameData?.timeBlack ?? 180;
-    const [clockWhite, setClockWhite] = useState(timeWite);
-    const [clockBlack, setClockBlack] = useState(timeBlack);
+    // --- Часы: гибридная модель ---
+    // Сервер авторитетен, клиент показывает локальный отсчёт между тиками.
+    // ВСЕ значения времени в этой системе — СЕКУНДЫ.
+    // fallbackTime берём из gameData.timeControl; legacy-значения <60 — это минуты, конвертируем.
+    const rawControl = gameData?.timeControl && gameData.timeControl > 0
+        ? gameData.timeControl
+        : 180;
+    const fallbackTime = rawControl < 60 ? rawControl * 60 : rawControl;
+    const initialClock = (v?: number) => (typeof v === "number" && v > 0 ? v : fallbackTime);
 
-    // Sync clocks from server state
+    // Храним часы в ref, чтобы интервал не зависел от частых setState,
+    // а в state — отображаемые целые секунды.
+    const clockRef = useRef({ white: initialClock(gameData?.timeWite), black: initialClock(gameData?.timeBlack) });
+    const [clockWhite, setClockWhite] = useState(() => Math.ceil(clockRef.current.white));
+    const [clockBlack, setClockBlack] = useState(() => Math.ceil(clockRef.current.black));
+
+    // ЖЕСТКАЯ синхронизация с серверным временем (move_made, timers, gameResumed, gameStart).
     useEffect(() => {
-        setClockWhite(gameData?.timeWite ?? 180);
-        setClockBlack(gameData?.timeBlack ?? 180);
+        const w = initialClock(gameData?.timeWite);
+        const b = initialClock(gameData?.timeBlack);
+        clockRef.current = { white: w, black: b };
+        setClockWhite(Math.ceil(w));
+        setClockBlack(Math.ceil(b));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameData?.timeWite, gameData?.timeBlack, gameData?.idGame]);
 
-    // Local tick (server authoritative, client just displays)
+    // Локальный отсчёт: тикаем каждые 100 мс в ref для плавности,
+    // публичное состояние обновляем только когда меняется целая секунда.
+    // Тикает ТОЛЬКО тот игрок, чья сейчас очередь хода, и только пока игра не завершена.
     useEffect(() => {
         if (isGameOver) return;
         const timer = setInterval(() => {
             const isWhiteMove = gameData?.move ?? true;
-            if (isWhiteMove) setClockWhite((t) => Math.max(0, t - 1));
-            else setClockBlack((t) => Math.max(0, t - 1));
-        }, 1000);
+            const key = isWhiteMove ? "white" : "black";
+            clockRef.current[key] = Math.max(0, clockRef.current[key] - 0.1);
+            const shownW = Math.ceil(clockRef.current.white);
+            const shownB = Math.ceil(clockRef.current.black);
+            setClockWhite((prev) => (prev !== shownW ? shownW : prev));
+            setClockBlack((prev) => (prev !== shownB ? shownB : prev));
+        }, 100);
         return () => clearInterval(timer);
     }, [gameData?.move, isGameOver]);
 
@@ -233,8 +253,9 @@ const GameArea: React.FC<GameAreaProps> = () => {
             });
             // Авторитетные часы с сервера — синхронизируемся сразу, не ждём тики.
             if (msg.timers) {
-                setClockWhite(msg.timers.white);
-                setClockBlack(msg.timers.black);
+                clockRef.current = { white: msg.timers.white, black: msg.timers.black };
+                setClockWhite(Math.ceil(msg.timers.white));
+                setClockBlack(Math.ceil(msg.timers.black));
             }
         };
 
@@ -261,8 +282,9 @@ const GameArea: React.FC<GameAreaProps> = () => {
             const msg = message as { fen: string; timers: { white: number; black: number } };
             if (msg.fen) initializeFromFen(msg.fen);
             if (msg.timers) {
-                setClockWhite(msg.timers.white);
-                setClockBlack(msg.timers.black);
+                clockRef.current = { white: msg.timers.white, black: msg.timers.black };
+                setClockWhite(Math.ceil(msg.timers.white));
+                setClockBlack(Math.ceil(msg.timers.black));
             }
         };
 
@@ -330,7 +352,16 @@ const GameArea: React.FC<GameAreaProps> = () => {
                             setActivFigure({ _id: -1, figure: "" });
                             setValidMoves([]);
 
-                            // Send to server
+                            // Отправляем на сервер ТОЛЬКО если партия реально активна —
+                            // иначе сервер ответит move_error с текстом про завершение.
+                            if (gameStatus !== "playing") {
+                                console.warn("[GameArea] Move blocked: game status is", gameStatus);
+                                initializeFromFen(gameData?.fen || START_FEN);
+                                setActivFigure({ _id: -1, figure: "" });
+                                setValidMoves([]);
+                                setLastMove(null);
+                                return;
+                            }
                             const room = getRoom();
                             room?.send("make_move", {
                                 from: fromSquare,
@@ -377,7 +408,7 @@ const GameArea: React.FC<GameAreaProps> = () => {
                 setValidMoves(moves);
             }
         },
-        [board, activFigure, validMoves, flipped, isGameOver, isWhite, initializeFromFen, playerColor]
+        [board, activFigure, validMoves, flipped, isGameOver, isWhite, initializeFromFen, playerColor, gameStatus, gameData?.fen]
     );
 
     /* ── Hover handlers ── */
