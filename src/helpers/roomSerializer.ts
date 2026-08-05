@@ -18,6 +18,9 @@ export interface GameDataPayload {
     timeControl: number;
     timePluse: number;
     fen?: string;
+    lastMoveTimestamp?: number;
+    /** Серверная пауза (кто-то насовсем отключился): часы заморожены. */
+    pausedSince?: number | null;
     message: string;
 }
 
@@ -42,6 +45,8 @@ export function toGameData(raw: unknown): GameDataPayload | null {
         timeControl: Number(m.timeControl ?? 180),
         timePluse: Number(m.timePluse ?? 0),
         fen,
+        lastMoveTimestamp: typeof m.lastMoveTimestamp === "number" ? m.lastMoveTimestamp : undefined,
+        pausedSince: typeof m.pausedSince === "number" ? m.pausedSince : null,
         message: String(m.message ?? ""),
     };
 }

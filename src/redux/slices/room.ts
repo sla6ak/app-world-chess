@@ -22,6 +22,12 @@ export interface RoomState {
         timeControl: number;
         timePluse: number;
         fen?: string;
+        /** ms-timestamp последнего хода (или момента восстановления часов) по серверу —
+         *  нужен для корректировки локального отсчёта (см. GameArea). */
+        lastMoveTimestamp?: number;
+        /** ms-timestamp начала паузы (disconnect соперника) — если задан,
+         *  серверные часы заморожены, клиент НЕ должен продолжать локальный отсчёт. */
+        pausedSince?: number | null;
     } | null;
 }
 
@@ -64,7 +70,7 @@ const roomSlice = createSlice({
         setRoomError(state, action: PayloadAction<string>) {
             state.error = action.payload;
         },
-        gameStartSuccess(state, action: PayloadAction<{ idGame: string; position: string[]; playerWite: string; playerBlack: string; reitingWite: number; reitingBlack: number; timeWite: number; timeBlack: number; move: boolean; message: string; typeGame: string; timeControl: number; timePluse: number; fen?: string }>) {
+        gameStartSuccess(state, action: PayloadAction<{ idGame: string; position: string[]; playerWite: string; playerBlack: string; reitingWite: number; reitingBlack: number; timeWite: number; timeBlack: number; move: boolean; message: string; typeGame: string; timeControl: number; timePluse: number; fen?: string; lastMoveTimestamp?: number; pausedSince?: number | null }>) {
             state.gameStarted = true;
             state.gameData = action.payload;
         },

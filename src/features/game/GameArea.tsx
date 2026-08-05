@@ -147,45 +147,179 @@ const GameArea: React.FC<GameAreaProps> = () => {
     // --- Часы: гибридная модель ---
     // Сервер авторитетен, клиент показывает локальный отсчёт между тиками.
     // ВСЕ значения времени в этой системе — СЕКУНДЫ.
-    // fallbackTime берём из gameData.timeControl; legacy-значения <60 — это минуты, конвертируем.
     const rawControl = gameData?.timeControl && gameData.timeControl > 0
         ? gameData.timeControl
         : 180;
     const fallbackTime = rawControl < 60 ? rawControl * 60 : rawControl;
     const initialClock = (v?: number) => (typeof v === "number" && v > 0 ? v : fallbackTime);
 
+    // «Якорная» модель часов (см. ниже): ref — мгновенные значения, используемые
+    // якорной синхронизацией и локальным тиком. Объявляем до эффектов.
+    /** ВАЖНО: первичную инициализацию делаем на gameStart/gameResumed/move_made.
+     *  Redux (gameData.timeWite/timeBlack) — медленный авторитет: при no-op тике
+     *  значение может отставать на секунды, и рескейлинг по нему дрожал на каждом тике.
+     */
+    const anchorRef = useRef<null | {
+        white: number;
+        black: number;
+        isWhiteMove: boolean;
+        anchoredAt: number; // ms — момент, когда якорь был принят от сервера
+    }>(null);
+    const syncClockFromServer = useCallback(
+        (timers: { white: number; black: number }, isWhiteMove: boolean, source: string) => {
+            if (!timers) return;
+            const prev = anchorRef.current;
+            anchorRef.current = {
+                white: timers.white,
+                black: timers.black,
+                isWhiteMove,
+                anchoredAt: Date.now(),
+            };
+            // МАЛОЕ расхождение НЕ правим — иначе при сдвинутом ходе серверного
+            // Math.floor() пользователь видит дёрганье ±1 с на каждый move_made.
+            // Порог 2 с: дрейф сети обычно < 0.5 c; если больше — скорее всего баг
+            // или reconnect, и тогда синхронизируем жёстко.
+            const prevActive = prev
+                ? prev.isWhiteMove
+                    ? prev.white
+                    : prev.black
+                : null;
+            const drift = prevActive !== null ? Math.abs(prevActive - (isWhiteMove ? timers.white : timers.black)) : Infinity;
+            const shouldHardSync = prev === null || drift > 2;
+
+            if (shouldHardSync) {
+                clockRefTick.current.white = timers.white;
+                clockRefTick.current.black = timers.black;
+                setClockWhite(Math.ceil(timers.white));
+                setClockBlack(Math.ceil(timers.black));
+            } else {
+                // Мягкая синхронизация: якорь обновили, UI не трогаем —
+                // следующий tick пойдёт от нового якоря, переход будет без скачка.
+                console.debug(
+                    "[clock-anchor] soft resync | source:", source,
+                    "| drift:", `${drift.toFixed(2)}s`,
+                    "| ignored from UI"
+                );
+            }
+
+            if (prev && drift > 1.5 && drift !== Infinity) {
+                console.debug(
+                    "[clock-anchor] resync | source:", source,
+                    "| activeDrift:", `${drift.toFixed(2)}s`,
+                    "| now:", JSON.stringify(timers)
+                );
+            }
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        []
+    );
+
+    // Серверная пауза (соперник отключился): часы стоят, локальный отсчёт ЗАПРЕЩЁН.
+    const pausedSince = gameData?.pausedSince ?? null;
+    // ms-timestamp последнего авторитетного сообщения от сервера.
+    // Синхронизация: remote = «часы в момент X», а НА ЭКРАНЕ надо показать
+    // remote − (now − X), иначе часы «отстают» после перезагрузки.
+    const lastMoveTimestamp = gameData?.lastMoveTimestamp;
+    // roomId для диагностики замены комнаты внутри игровой сессии:
+    // две РАЗНЫЕ комнаты при одном idGame = явное пересоздание и источник бага с часами.
+    const roomId = useSelector((state: RootState) => state.room.roomId) as string | undefined;
+
     // Храним часы в ref, чтобы интервал не зависел от частых setState,
     // а в state — отображаемые целые секунды.
-    const clockRef = useRef({ white: initialClock(gameData?.timeWite), black: initialClock(gameData?.timeBlack) });
-    const [clockWhite, setClockWhite] = useState(() => Math.ceil(clockRef.current.white));
-    const [clockBlack, setClockBlack] = useState(() => Math.ceil(clockRef.current.black));
+    // `clockRefTick` — «рабочие» часы, которыми владеет тикающий interval и якорные
+    // синхронизации. ОБЯЗАТЕЛЬНО отдельные от Redux, чтобы перепроверка по polling
+    // не затирала локальное плавное значение.
+    const clockRefTick = useRef({ white: initialClock(gameData?.timeWite), black: initialClock(gameData?.timeBlack) });
+    const [clockWhite, setClockWhite] = useState(() => Math.ceil(clockRefTick.current.white));
+    const [clockBlack, setClockBlack] = useState(() => Math.ceil(clockRefTick.current.black));
 
-    // ЖЕСТКАЯ синхронизация с серверным временем (move_made, timers, gameResumed, gameStart).
+    // --- Якорная модель часов (вместо дёрганной жёсткой) ---
+    // Причина дёрганности раньше: Redux-эффект вызывался на КАЖДЫЙ tick (1 Гц) и
+    // приравнивал часы к «округлённым» timeWite/timeBlack, перетирая результат
+    // локального тика 10 Гц. Это давало микро-прыжки в ±0.1..1 сек каждую секунду.
+    //
+    // Сейчас:
+    //  1) живая частота — локальный тик в ref (ниже);
+    //  2) серверные тики здесь ИГНОРИРУЮТСЯ (см. комментарий в handleTimers App.tsx);
+    //  3) якоря ставят СОБЫТИЯ: gameStart/move_made/gameResumed/первичный mount.
+    //
+    // Redux-поля timeWite/timeBlack мы используем ТОЛЬКО как начальную инициализацию,
+    // пока anchorRef ещё пуст, иначе любые no-op тики от сервера будут дёргать часы
+    // назад/вперёд по ±1–2 мс RTT.
     useEffect(() => {
+        if (anchorRef.current) return;
+        if (initialClock(gameData?.timeWite) === fallbackTime && initialClock(gameData?.timeBlack) === fallbackTime) {
+            // Нет данных от сервера (ни тиков, ни событий) — нечего якорить.
+            // Показываем UI-controllable дефолт, тикаем с него до первого якоря.
+        }
         const w = initialClock(gameData?.timeWite);
         const b = initialClock(gameData?.timeBlack);
-        clockRef.current = { white: w, black: b };
+        anchorRef.current = {
+            white: w,
+            black: b,
+            isWhiteMove: gameData?.move ?? true,
+            anchoredAt: Date.now(),
+        };
+        clockRefTick.current.white = w;
+        clockRefTick.current.black = b;
         setClockWhite(Math.ceil(w));
         setClockBlack(Math.ceil(b));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [gameData?.timeWite, gameData?.timeBlack, gameData?.idGame]);
+    }, [gameData?.idGame]);
 
-    // Локальный отсчёт: тикаем каждые 100 мс в ref для плавности,
-    // публичное состояние обновляем только когда меняется целая секунда.
-    // Тикает ТОЛЬКО тот игрок, чья сейчас очередь хода, и только пока игра не завершена.
+    // --- ОСНОВНОЙ ТИК (плавный, использует якорь) ---
+    // Вместо «‐ 0.1с в ref» интерполируем от ЯКОРЯ: так ошибки не накапливаются
+    // на setState-рендерах, и этот блок индиферентен к пропускам React-рендера.
+    //
+    // - идёт ТОЛЬКО сторона, чей сейчас ход (по Redux gameData.move),
+    // - во время серверной паузы (pausedSince) локальный тик ВЫКЛЮЧЕН,
+    // - публичное состояние обновляем ТОЛЬКО когда целая секунда поменялась,
+    //   чтобы не заставлять React перерендеривать 10 раз в секунду.
     useEffect(() => {
         if (isGameOver) return;
+        if (pausedSince !== null) return;
+
         const timer = setInterval(() => {
-            const isWhiteMove = gameData?.move ?? true;
-            const key = isWhiteMove ? "white" : "black";
-            clockRef.current[key] = Math.max(0, clockRef.current[key] - 0.1);
-            const shownW = Math.ceil(clockRef.current.white);
-            const shownB = Math.ceil(clockRef.current.black);
+            const anchor = anchorRef.current;
+            if (!anchor) return;
+            // Чей ход: предпочитаем Redux, иначе якорь. Это позволяет
+            // якорной синхронизации корректно переключать сторону на ходе.
+            const isWhiteMove = gameData?.move ?? anchor.isWhiteMove;
+            const key = isWhiteMove ? ("white" as const) : ("black" as const);
+            const elapsed = (Date.now() - anchor.anchoredAt) / 1000;
+            const target = Math.max(
+                0,
+                isWhiteMove ? anchor.white - elapsed : anchor.black - elapsed,
+            );
+            clockRefTick.current[key] = target;
+
+            const shownW = Math.ceil(key === "white" ? target : clockRefTick.current.white);
+            const shownB = Math.ceil(key === "black" ? target : clockRefTick.current.black);
             setClockWhite((prev) => (prev !== shownW ? shownW : prev));
             setClockBlack((prev) => (prev !== shownB ? shownB : prev));
         }, 100);
         return () => clearInterval(timer);
-    }, [gameData?.move, isGameOver]);
+    }, [gameData?.move, isGameOver, pausedSince]);
+
+    // ДИАГНОСТИКА: отслеживаем замены комнаты внутри одной игровой сессии.
+    // Две комнаты при одном idGame = комната пересоздалась → главная причина
+    // «часы заново» (новый GameManager берёт snapshot из Mongo, старый убит).
+    const firstRoomIdRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!roomId) return;
+        if (firstRoomIdRef.current === null) {
+            firstRoomIdRef.current = roomId;
+            console.log("[GameArea] initial roomId:", roomId, "| idGame:", gameData?.idGame);
+        } else if (firstRoomIdRef.current !== roomId) {
+            console.warn(
+                "[ROOMMANAGER] ⚠️ Room replaced mid-game — clocks reset likely | old:",
+                firstRoomIdRef.current,
+                "| new:", roomId,
+                "| idGame:", gameData?.idGame,
+            );
+            firstRoomIdRef.current = roomId;
+        }
+    }, [roomId, gameData?.idGame]);
 
     // Авто-флип для чёрного игрока + ручная кнопка
     const flipped = shouldFlipBoard;
@@ -230,7 +364,7 @@ const GameArea: React.FC<GameAreaProps> = () => {
     // joinOrCreate, а GameArea может примонтироваться раньше — без этого
     // подписки на move_made/move_error/gameResumed не ставились у первого игрока,
     // и ходы соперника визуально «не приходили».
-    const roomId = useSelector((state: RootState) => state.room.roomId);
+    // roomId уже объявлен вверху (для диагностики замены комнаты).
 
     useEffect(() => {
         const room = getRoom();
@@ -241,6 +375,7 @@ const GameArea: React.FC<GameAreaProps> = () => {
                 fen?: string;
                 move?: { from: string; to: string; promotion?: string };
                 timers?: { white: number; black: number };
+                nextTurn?: string | boolean;
             };
             if (!msg.fen) return;
             initializeFromFen(msg.fen);
@@ -251,11 +386,20 @@ const GameArea: React.FC<GameAreaProps> = () => {
                 from: msg.move ? squareToBoardIndex(msg.move.from) : -1,
                 to: msg.move ? squareToBoardIndex(msg.move.to) : -1,
             });
-            // Авторитетные часы с сервера — синхронизируемся сразу, не ждём тики.
+            // Авторитетные часы с сервера — якорная синхронизация: задаём базис,
+            // от которого локальный интервал равномерно «дотикает», без прыжков.
             if (msg.timers) {
-                clockRef.current = { white: msg.timers.white, black: msg.timers.black };
-                setClockWhite(Math.ceil(msg.timers.white));
-                setClockBlack(Math.ceil(msg.timers.black));
+                const nextIsWhite =
+                    msg.nextTurn === "w" ||
+                    msg.nextTurn === true ||
+                    msg.nextTurn === undefined
+                        ? true
+                        : false;
+                syncClockFromServer(
+                    { white: msg.timers.white, black: msg.timers.black },
+                    nextIsWhite,
+                    "move_made"
+                );
             }
         };
 
@@ -282,9 +426,13 @@ const GameArea: React.FC<GameAreaProps> = () => {
             const msg = message as { fen: string; timers: { white: number; black: number } };
             if (msg.fen) initializeFromFen(msg.fen);
             if (msg.timers) {
-                clockRef.current = { white: msg.timers.white, black: msg.timers.black };
-                setClockWhite(Math.ceil(msg.timers.white));
-                setClockBlack(Math.ceil(msg.timers.black));
+                // Якорный ресинк на resume: сервер ответил точными таймерами,
+                // ставим якорь без подстраивания локальной исносуммы.
+                syncClockFromServer(
+                    { white: msg.timers.white, black: msg.timers.black },
+                    gameData?.move ?? true,
+                    "gameResumed"
+                );
             }
         };
 

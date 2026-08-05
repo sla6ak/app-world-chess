@@ -83,10 +83,18 @@ function AppContent() {
                 reconnectingRef.current = false;
 
                 if (result.status === "matched" && result.game && result.gameId) {
-                    console.log("[Reconnect] ✅ Active game found, reconnecting | gameId:", result.gameId);
-
                     const gameId = result.gameId!;
                     const gameData = result.game;
+
+                    // Ключевая диагностика бага «часы после F5»: что вернула Mongo
+                    // ДО того, как WS gameStart/gameResumed перезапишет актуальными значениями.
+                    console.log(
+                        "[Reconnect] ✅ Active game found, reconnecting | gameId:", result.gameId,
+                        "| db timeWite/timeBlack:", `${gameData.timeWite}/${gameData.timeBlack}`,
+                        "| timeControl:", gameData.timeControl,
+                        "| moveHistory:", gameData.moveHistory?.length ?? 0,
+                        "| paused(db):", (gameData as any)?.paused
+                    );
 
                     // WS кімната вже підключена всередині reconnectToActiveGame
                     dispatch(roomSlice.actions.connectRoomSuccess({ roomId: gameId }));
@@ -108,6 +116,9 @@ function AppContent() {
                         timeControl: gameData.timeControl || 180,
                         timePluse: gameData.timePluse || 0,
                         fen: (gameData as any).pgn || undefined, // using pgn field for now
+                        // Сервер заморозил часы на disconnect — до gameResumed клиент не должен
+                        // вести локальный отсчёт от этих устаревших значений.
+                        pausedSince: (gameData as any).paused ? Date.now() : null,
                     };
                     dispatch(roomSlice.actions.gameStartSuccess(restored));
                     const resolvedColor = resolvePlayerColor(userName, restored);
@@ -140,10 +151,25 @@ function AppContent() {
 
         console.log("[WS] Subscribing to room messages, roomId:", room.id);
 
+        // Диагностика жизненного цикла WS — ключ к багу «часы пошли заново после F5»:
+        // по этим логам видно, когда умирает старый коннект и когда клиент устанавливает
+        // НОВОЕ подключение вместо переиспользования существующей комнаты.
+        room.onLeave((code: number) => {
+            console.warn("[WS] room.onLeave — socket closed | code:", code, "| roomId:", room.id);
+        });
+        room.onError((code: number, message?: string) => {
+            console.warn("[WS] room.onError | code:", code, "| message:", message);
+        });
+
         const handleGameMessage = (message: unknown) => {
-            console.log("[WS] Received 'game' event:", JSON.stringify(message));
             const parsed = toGameData(message);
             if (!parsed) return;
+            console.debug(
+                "[WS] 'game' | idGame:", parsed.idGame,
+                "| move:", parsed.move,
+                "| timeWite/timeBlack:", `${parsed.timeWite}/${parsed.timeBlack}`,
+                "| pausedSince:", parsed.pausedSince ?? null
+            );
             if (parsed.position && parsed.position.length > 0) {
                 dispatch(clearDrawOffer());
             }
@@ -157,6 +183,8 @@ function AppContent() {
                         timeWite: parsed.timeWite,
                         timeBlack: parsed.timeBlack,
                         ...(parsed.fen ? { fen: parsed.fen } : {}),
+                        ...(parsed.lastMoveTimestamp ? { lastMoveTimestamp: parsed.lastMoveTimestamp } : {}),
+                        pausedSince: parsed.pausedSince ?? null,
                     })
                 );
             }
@@ -180,6 +208,8 @@ function AppContent() {
                 timeControl?: number;
                 timePluse?: number;
                 fen?: string;
+                lastMoveTimestamp?: number;
+                pausedSince?: number | null;
             };
             if (!msg.idGame || msg.idGame === "undefined") {
                 console.error("[WS] gameStart missing idGame — ignoring");
@@ -208,7 +238,14 @@ function AppContent() {
                 timeControl: msg.timeControl ?? 180,
                 timePluse: msg.timePluse ?? 0,
                 fen: msg.fen,
+                lastMoveTimestamp: msg.lastMoveTimestamp,
+                pausedSince: msg.pausedSince ?? null,
             };
+            console.debug(
+                "[WS] 'gameStart' payload | idGame:", payload.idGame,
+                "| timeWite/timeBlack:", `${payload.timeWite}/${payload.timeBlack}`,
+                "| pausedSince:", payload.pausedSince ?? null
+            );
             const resolvedColor = resolvePlayerColor(userName, payload);
             if (resolvedColor) dispatch(newColorGame(resolvedColor));
             dispatch(roomSlice.actions.gameStartSuccess(payload));
@@ -220,7 +257,12 @@ function AppContent() {
         };
 
         const handleGameOver = (message: unknown) => {
-            console.log("[WS] Received 'gameOver' event:", JSON.stringify(message));
+            const m = message as { gameOverData?: { result: string; endReason?: string } };
+            console.warn(
+                "[WS] 'gameOver' | result:", m.gameOverData?.result,
+                "| endReason:", m.gameOverData?.endReason,
+                "| raw:", JSON.stringify(message)
+            );
             const msg = message as {
                 gameOverData?: {
                     result: string;
@@ -317,22 +359,25 @@ function AppContent() {
             toast.error(msg.message || "Invalid move");
         };
 
-        const handleTimers = (message: unknown) => {
-            // Авторитетные часы от сервера каждую секунду
-            const timers = message as { white: number; black: number };
+        const handleTimers = (_message: unknown) => {
+            // Намеренно НЕ пишем ежесекундные тики в Redux — это была главная причина
+            // дёрганных часов (каждую секунду Redux-эффект приравнивал якорь к «округлённому»
+            // серверному значению и перетирал плавный локальный тик в GameArea).
+            // Авторитетный ресинх часов происходит по событиям: gameStart / move_made / gameResumed.
+            // Здесь только доказываем, что сервер жив и партия активна:
             const current = (store.getState() as RootState).room.gameData;
-            if (!current) return;
-            dispatch(
-                roomSlice.actions.gameStartSuccess({
-                    ...current,
-                    timeWite: timers.white,
-                    timeBlack: timers.black,
-                })
-            );
+            if (current && current.pausedSince != null) {
+                dispatch(
+                    roomSlice.actions.gameStartSuccess({
+                        ...current,
+                        pausedSince: null,
+                    })
+                );
+            }
         };
 
         const handleGameResumed = (message: unknown) => {
-            console.log("[WS] Received 'gameResumed':", JSON.stringify(message));
+            console.debug("[WS] Received 'gameResumed':", JSON.stringify(message));
             const msg = message as {
                 timers?: { white: number; black: number };
                 fen?: string;
@@ -344,14 +389,28 @@ function AppContent() {
                         ...current,
                         timeWite: msg.timers.white,
                         timeBlack: msg.timers.black,
+                        ...(msg.fen ? { fen: msg.fen } : {}),
+                        pausedSince: null,
                     })
                 );
             }
             toast.info("Игра восстановлена");
         };
 
-        const handleOpponentDisconnected = () => {
-            console.log("[WS] Received 'opponent_disconnected'");
+        const handleOpponentDisconnected = (message: unknown) => {
+            console.log("[WS] Received 'opponent_disconnected':", JSON.stringify(message));
+            // Сервер заморозил часы — останавливаем локальный отсчёт немедленно,
+            // иначе UI «дотикает» время оффлайн-соперника и покажет ему флаг,
+            // настоящее значение придёт только на следующем tick/gameStart.
+            const current = (store.getState() as RootState).room.gameData;
+            if (current) {
+                dispatch(
+                    roomSlice.actions.gameStartSuccess({
+                        ...current,
+                        pausedSince: Date.now(),
+                    })
+                );
+            }
             toast.info("Соперник отключился — ждём его возвращения (60 сек)", {
                 autoClose: 5000,
             });

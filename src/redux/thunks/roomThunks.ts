@@ -96,6 +96,23 @@ export const connectToRoom = createAsyncThunk<
                 "[WS] Connected to room | sessionRoomId:", sessionRoomId,
                 "| gameId (mongo):", gameId
             );
+            // ⚠️ КРИТИЧНО для бага «часы пошли заново после F5»:
+            // если joinOrCreate создал НОВУЮ комнату вместо присоединения к существующей,
+            // сервер начинает с Mongo-снапшота — а у клиента был актуальнее state.
+            // sessionRoomId !== gameId — верный признак, что нас подключили к «чужой» комнате
+            // по filterBy(["gameId"]). Это ОЖИДАЕМОЕ поверхностное поведение.
+            if (sessionRoomId !== gameId) {
+                console.log(
+                    "[WS] attached to existing room | sessionRoomId:", sessionRoomId,
+                    "| requested gameId:", gameId,
+                    "→ часы придут с того GameManager, что в памяти этой комнаты"
+                );
+            } else {
+                console.warn(
+                    "[WS] created NEW room for active game | gameId:", gameId,
+                    "→ GameManager.restore инициализируется ИЗ MongoDB — часы могут отличаться от того, что было в прежней комнате"
+                );
+            }
             return { roomId: sessionRoomId };
         } catch (error: unknown) {
             console.error("[WS] Failed to connect to room:", error);
@@ -223,7 +240,13 @@ export const reconnectToActiveGame = createAsyncThunk<
 
             if (result.status === "matched" && result.game) {
                 const gameId = result.game._id;
-                console.log("[WS] Active game found | gameId:", gameId);
+                console.log(
+                    "[WS] Active game found | gameId:", gameId,
+                    "| moveHistory:", result.game.moveHistory?.length ?? 0,
+                    "| timeWite/timeBlack:", `${result.game.timeWite}/${result.game.timeBlack}`,
+                    "| paused:", result.game.paused,
+                    "| result:", result.game.result
+                );
 
                 // Підключаємось до WS кімнати з gameId
                 await dispatch(
