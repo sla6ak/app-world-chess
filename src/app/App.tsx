@@ -314,7 +314,12 @@ function AppContent() {
           result: string;
           winnerRole?: string | null;
           endReason?: string;
-          ratingChange: number;
+          // Rating change как «разница по обеим сторонам» от сервера.
+          // Например { wite: +18, black: -16 } или { wite: -16, black: +18 }.
+          ratingChange: {
+            wite: number;
+            black: number;
+          };
         };
       };
       if (msg.gameOverData) {
@@ -342,18 +347,22 @@ function AppContent() {
         )
           personal = 'win';
         else personal = 'loss';
+        // Дельту берём по своей роли (wite/black от сервера), не из победы.
+        // (Проигравший may получить 0 при длинном rating gap, победитель может потерять
+        // рейтинг при сильном opponent в некоторых системах, но у нас K=32 — победитель всегда
+        // gains, loser всегда lesser. Ничья на равном рейтинге — обоим ±0.)
+        const myDelta = myRole === 'wite' ? Number(god.ratingChange?.wite) : myRole === 'black' ? Number(god.ratingChange?.black) : 0;
         dispatch(
           setGameOver({
             result: personal,
-            ratingChange: god.ratingChange,
+            ratingChange: myDelta,
           })
         );
 
         // Сразу обновляем статистику в Redux, чтобы UI сам считался актуальным
-        // без ожидания повторного запроса /auth/current (который есть в луговицте
-        // кэша Redis между запросами). ratingChange — это дельта от сервера.
+        // без ожидания повторного запроса /auth/current.
         const cur = (store.getState() as RootState).user.stats;
-        const finalRating = Math.max(0, Number(cur.rating) + Number(god.ratingChange || 0));
+        const finalRating = Math.max(0, Number(cur.rating) + myDelta);
         dispatch(
           setUserStats({
             rating: finalRating,
