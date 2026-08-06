@@ -83,6 +83,14 @@ export const authApi = createApi({
       }),
       providesTags: ['user'],
     }),
+    /** История завершённых партий текущего игрока (100 по умолчанию, без pending). */
+    getGameHistory: builder.query({
+      query: (limit: number = 100) => ({
+        url: `/game/history/last?limit=${limit}`,
+        method: 'GET',
+      }),
+      providesTags: ['user'],
+    }),
   }),
 });
 
@@ -96,6 +104,7 @@ export const {
   useCancelSearchRoomMutation,
   useGetActiveGameQuery,
   useGetTopPlayersQuery,
+  useGetGameHistoryQuery,
 } = authApi;
 
 export default authApi;

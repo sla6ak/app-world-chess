@@ -25,28 +25,28 @@ const TopPlayers: React.FC = () => {
   return (
     <div className={s.root}>
       <header className={s.header}>
-        <h1 className={s.title}>Лидерборд</h1>
-        <p className={s.sub}>Топ игроков по рейтингу (максимум 30)</p>
+        <h1 className={s.title}>Leaderboard</h1>
+        <p className={s.sub}>Top players by rating (maximum 30)</p>
         <button
           type="button"
           className={s.refreshBtn}
           onClick={() => refetch()}
           disabled={isFetching}
         >
-          {isFetching ? 'Обновление…' : 'Обновить'}
+          {isFetching ? 'Updating…' : 'Update'}
         </button>
       </header>
 
       <div className={s.body}>
-        {isLoading && <div className={s.status}>Загрузка…</div>}
+        {isLoading && <div className={s.status}>Loading…</div>}
         {isError && (
           <div className={s.status} style={{ color: 'var(--color-error)' }}>
-            Ошибка загрузки лидерборда
+            Error loading leaderboard
           </div>
         )}
 
         {!isLoading && !isError && players.length === 0 && (
-          <div className={s.status}>Пока никого нет — играйте первым!</div>
+          <div className={s.status}>No players found — be the first!</div>
         )}
 
         {players.length > 0 && (
@@ -54,10 +54,10 @@ const TopPlayers: React.FC = () => {
             <thead>
               <tr>
                 <th className={s.th}>#</th>
-                <th className={s.th}>Игрок</th>
-                <th className={s.th}>Рейтинг</th>
-                <th className={s.th}>Игры</th>
-                <th className={s.th}>В / П / Н</th>
+                <th className={s.th}>Player</th>
+                <th className={s.th}>Rating</th>
+                <th className={s.th}>Games</th>
+                <th className={s.th}>W / L / D</th>
                 <th className={s.th}>Win%</th>
               </tr>
             </thead>

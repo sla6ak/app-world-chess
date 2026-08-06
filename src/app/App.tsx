@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { useIsActivTokenQuery } from '@redux/api/authApi';
-import { setUserName, setUserStats } from '@redux/slices/user';
+import { setUserName, setUserStats, setUserId } from '@redux/slices/user';
 import { connectToRoom, reconnectToActiveGame } from '@redux/thunks/roomThunks';
 import { roomSlice } from '@redux/slices/room';
 import { newColorGame } from '@redux/slices/color';
@@ -54,6 +54,7 @@ function AppContent() {
       return;
     }
     dispatch(setUserName(auth.user.name));
+    dispatch(setUserId(auth.user._id ?? ''));
     dispatch(
       setUserStats({
         rating: auth.user.currentReiting ?? 800,
