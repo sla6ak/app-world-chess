@@ -26,3 +26,6 @@ yarn-error.log*
 /output.css
 /tailwind-config.js
 /tailwind-cache
+
+# TypeScript build artifacts
+tsconfig.tsbuildinfo

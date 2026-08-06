@@ -4,11 +4,16 @@
   "private": true,
   "homepage": "https://app-world-chess.vercel.app/",
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^5.18.0",
+    "@mui/material": "^5.18.0",
     "@reduxjs/toolkit": "^2.12.0",
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.7",
     "ajv": "^8.17.1",
+    "chess.js": "^1.4.0",
     "colyseus.js": "^0.16.22",
     "formik": "^2.4.9",
     "modern-normalize": "^3.0.1",
@@ -33,10 +38,7 @@
     "lint:fix": "eslint --fix src/**/*.{js,jsx,tsx,ts}",
     "lint:watch": "eslint --watch src/**/*.{js,jsx,tsx,ts}",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,css,scss,json,md}\"",
-    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,css,scss,json,md}\"",
-    "tailwind:build": "tailwindcss -i ./src/index.css -o ./src/output.css",
-    "tailwind:watch": "tailwindcss -i ./src/index.css -o ./src/output.css --watch",
-    "prepare": "tailwindcss -i ./src/index.css -o ./src/output.css"
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,css,scss,json,md}\""
   },
   "eslintConfig": {
     "extends": [
@@ -85,20 +87,15 @@
     ]
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.20",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.65.0",
-    "autoprefixer": "^10.5.4",
     "concurrently": "^10.0.4",
     "customize-cra": "^1.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
-    "postcss": "^8.5.25",
     "prettier": "^3.6.0",
     "react-app-rewired": "^2.2.1",
-    "tailwindcss": "^3.4.19",
-    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.3"
   }
 }

@@ -8,11 +8,16 @@ module.exports = function(app) {
       changeOrigin: true,
     })
   );
+  // Проксіуємо лише API-підшляхи /game, а не базовий /game.
+  // Це дозволяє historyApiFallback обслуговувати /game для SPA-перезавантажень.
   app.use(
     '/game',
-    createProxyMiddleware({
-      target: 'http://localhost:5000',
-      changeOrigin: true,
-    })
+    createProxyMiddleware(
+      (pathname) => pathname !== '/game' && pathname !== '/game/',
+      {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      }
+    )
   );
 };

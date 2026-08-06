@@ -1,72 +1,114 @@
 # Chess-World — React Chess Application
 
-## Theming System
+Клиентская часть шахматной платформы **Chess World** — React SPA с real-time мультиплеером через WebSocket (Colyseus).
 
-The project uses a CSS custom properties (CSS Variables) theming system with support for multiple themes.
+## Технологический стек
 
-### Available Themes
+| Технология | Версия | Назначение |
+|------------|--------|------------|
+| React | `^18.3.1` | UI-библиотека |
+| TypeScript | `^5.9.3` | Типизация |
+| Redux Toolkit | `^2.12.0` | State management + RTK Query |
+| React Router v6 | `^6.30.4` | Маршрутизация |
+| Colyseus.js | `^0.16.22` | WebSocket-клиент |
+| Tailwind CSS v3 | `^3.4.19` | CSS-фреймворк |
+| Formik + Yup | `^2.4.9` / `^1.7.1` | Формы и валидация |
+| React Toastify | `^11.0.5` | Уведомления |
+| Redux Persist | `^6.0.0` | Персистенция состояния |
 
-| Theme Class            | Description              |
-| ---------------------- | ------------------------ |
-| `theme-light`          | Warm light (default)     |
-| `theme-dark`           | Dark mode                |
-| `theme-chess-classic`  | Classic chess warm tones |
-| `theme-ocean`          | Cool blue ocean theme    |
+## Быстрый старт
 
-### How to Switch Themes
+```bash
+cd app-world-chess
 
-Themes are applied by adding a class to the `<html>` element:
+# Установка зависимостей
+npm install
 
-```html
-<html lang="en" class="theme-dark">
+# Копирование шаблона окружения
+cp .env.template .env
+# Отредактировать .env: REACT_APP_BASE_URL, REACT_APP_SOCKET_URL
+
+# Разработка (hot reload + lint watch)
+npm run dev
+
+# Сборка для продакшн
+npm run build
 ```
 
-Or programmatically via the `ThemeSwitcher` component (included in the app bar).
+## Документация
 
-### CSS Variable Reference
+Документация фронтенда находится в каталоге `docs/`:
 
-All theme colors are defined in `src/styles/themes.css` as CSS custom properties:
+| Документ | Описание |
+|----------|----------|
+| [README.md](./docs/README.md) | Оглавление, быстрый старт, стек, структура проекта |
+| [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Архитектура, слои, потоки данных, маршрутизация |
+| [ROUTING.md](./docs/ROUTING.md) | Маршруты, защита маршрутов, навигация |
+| [STATE.md](./docs/STATE.md) | Redux Toolkit: слайсы, store, persist, RTK Query |
+| [COMPONENTS.md](./docs/COMPONENTS.md) | Компоненты: структура, назначение, принципы |
+| [FEATURES.md](./docs/FEATURES.md) | Функциональные области: auth, game, home |
+| [THEMING.md](./docs/THEMING.md) | Система тем, CSS-переменные, Tailwind |
+| [WEBSOCKET.md](./docs/WEBSOCKET.md) | WebSocket-протокол, Colyseus, события |
+| [API.md](./docs/API.md) | REST API (RTK Query), эндпоинты |
+| [HELPERS.md](./docs/HELPERS.md) | Утилиты и хелперы |
 
-| Variable                    | Description              |
-| --------------------------- | ------------------------ |
-| `--color-bg-primary`        | Page background          |
-| `--color-bg-secondary`      | Cards, modals, inputs    |
-| `--color-bg-surface`        | Sidebar/app bar bg       |
-| `--color-text-primary`      | Main text color          |
-| `--color-text-secondary`    | Muted/helper text        |
-| `--color-accent`            | Primary brand color      |
-| `--color-accent-hover`      | Accent hover state       |
-| `--color-bg-board`          | Chess board light square |
-| `--color-bg-board-dark`     | Chess board dark square  |
-| `--color-green`             | Success/green accent     |
-| `--color-error`             | Error color              |
-| `--color-border`            | Border color             |
-| `--color-shadow`            | Default shadow           |
+## Структура проекта
 
-### Adding a New Theme
+```
+app-world-chess/
+├── public/
+│   ├── index.html
+│   ├── manifest.json
+│   └── ...
+├── src/
+│   ├── app/
+│   │   ├── App.tsx           # Корневой компонент: роутинг, WS-подписки
+│   │   └── index.ts
+│   ├── components/           # Переиспользуемые UI-компоненты
+│   │   ├── generalButton/
+│   │   ├── loader/
+│   │   ├── modal/
+│   │   ├── privateRoute/
+│   │   ├── publicRoute/
+│   │   ├── sidebar/
+│   │   ├── themeSwitcher/
+│   │   ├── titleApp/
+│   │   └── userMenu/
+│   ├── config/
+│   ├── features/             # Функциональные области
+│   │   ├── auth/
+│   │   ├── game/
+│   │   └── home/
+│   ├── helpers/
+│   ├── layouts/
+│   │   └── Layout.tsx
+│   ├── pages/                # Страницы (lazy-loaded)
+│   │   ├── dashboardPage/
+│   │   ├── loginPage/
+│   │   └── registerPage/
+│   ├── redux/
+│   │   ├── api/
+│   │   ├── slices/
+│   │   ├── store.ts
+│   │   └── thunks/
+│   ├── services/
+│   ├── styles/
+│   │   └── themes.css
+│   ├── index.tsx
+│   └── index.css
+├── docs/
+├── package.json
+├── tailwind.config.js
+└── tsconfig.json
+```
 
-1. Add a new theme block in `src/styles/themes.css`
-2. Add the theme class to the `THEMES` array in `src/helpers/theme.ts`
-3. Add a theme option in `ThemeSwitcher` component
-4. Add the class to `index.html` as a default if desired
+## Архитектурные принципы
 
-### Tailwind CSS Integration
-
-The Tailwind config (`tailwind.config.js`) maps its color tokens to CSS variables, so all Tailwind utilities automatically respond to theme changes.
-
----
-
-## Application Logic
-
-- Single-page application with React Router
-- User authentication via Redux + WebSocket
-- Layout with navigation and user menu
-- Game board with interactive chess pieces
-- Statistics page
-- Multiple time control options for games
-
-### Pages:
-
-1. **Home** — choose game mode and time control
-2. **Statistics** — player stats, rating, wins/losses
-3. **Game** — interactive chess board
+- **Авторитарный клиент** — клиент отправляет ходы, сервер валидирует и рассылает обновления
+- **Colyseus Rooms** — каждая партия изолирована в отдельной комнате
+- **Redux Persist** — token и wsId сохраняются между сессиями
+- **CSS-переменные для тем** — все цвета определены через custom properties
+- **RTK Query** — все REST-запросы инкапсулированы в `authApi`
+- **Feature-based организация** — код группирован по функциональности
+- **Lazy loading** — страницы загружаются лениво через `React.lazy()`
+- **Alias-пути** — импорт через `@components/`, `@features/`, `@layouts/`, `@pages/`, `@redux/`, `@helpers/`, `@services/`, `@config/`

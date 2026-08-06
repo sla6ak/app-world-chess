@@ -1,0 +1,237 @@
+.menu {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-bg-primary);
+  /* Контейнер растягивает родителя; HomeTab.root тоже height:100%,
+     поэтому реальная высота ограничена viewport минус любые внешние offsets. */
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.warningBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 72rem;
+  margin: 0.5rem auto;
+  padding: 0.5rem 1rem;
+  border-radius: 0.75rem;
+  background-color: var(--color-error-bg);
+  color: var(--color-error);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  border: 1px solid rgba(151, 0, 0, 0.2);
+}
+
+.warningBanner svg {
+  flex-shrink: 0;
+  color: var(--color-error);
+}
+
+.header {
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  padding: 1rem 1rem 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .header {
+    padding: 1.25rem 2rem 0.5rem;
+  }
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Poppins', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+@media (min-width: 768px) {
+  .title {
+    font-size: 1.875rem;
+  }
+}
+
+.sub {
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  max-width: 72rem;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .body {
+    padding: 1rem 2rem 1.5rem;
+  }
+}
+
+/* Грид 3×3, всегда вмещается в экран по высоте.
+   Карточки центрируются в ячейках; квадратность обеспечивает сама .card. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 0.75rem;
+  flex: 1;
+  min-height: 0;
+  place-items: center;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* Квадрат на ЛЮБОМ экране: берём минимум из ширины колонки и 28% меньшей
+     стороны вьюпорта (vmin). На ПК ограничит высота viewport, на мобилке —
+     ширина колонки (~1/3 экрана). aspect-ratio фиксирует квадрат. */
+  width: min(100%, 28vmin);
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: all 200ms ease;
+  overflow: hidden;
+  cursor: pointer;
+  border: none;
+  background: var(--color-bg-secondary);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text-primary);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    var(--shadow-glow),
+    0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.card:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-card);
+}
+
+.card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.card:focus-visible {
+  outline: none;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15), transparent);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  border-radius: inherit;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.card:hover::after {
+  opacity: 1;
+}
+
+.cardValue {
+  /* Основная надпись: 3+2, 5, 10+5. Размер масштабируется вместе с картой:
+     на мобилке (~390px) ~1.3rem, на десктопе (1080px) ~3rem. */
+  position: relative;
+  font-size: clamp(1.25rem, 6vmin, 3rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-family: 'Poppins', 'Inter', sans-serif;
+}
+
+.cardUnit {
+  position: relative;
+  font-size: clamp(0.6rem, 1.6vmin, 0.8rem);
+  margin-top: 0.25rem;
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 500;
+}
+
+.card:hover .cardUnit {
+  opacity: 1;
+}
+
+.btn {
+  align-self: flex-start;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 200ms ease;
+  border: 1px solid var(--color-accent-border);
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.15);
+  color: var(--color-accent);
+  background-color: var(--color-accent-subtle);
+}
+
+@media (min-width: 640px) {
+  .btn {
+    align-self: auto;
+  }
+}
+
+.headerRow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .headerRow {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.btnLabel {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .btnLabel {
+    display: block;
+  }
+}

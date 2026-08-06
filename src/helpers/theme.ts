@@ -32,5 +32,21 @@ export function getCurrentTheme(): string {
     return "theme-light";
 }
 
-/** Material theme placeholder — kept for compatibility */
+// eslint-disable-next-line react-refresh/only-export-components
 export const materialTheme: any = null;
+
+/** Resolve which color a player has in a game by matching their user name
+ *  against the game's white/black player names.
+ *  Returns "wite" / "black", or null when the user is not a participant. */
+export function resolvePlayerColor(
+    userName: string,
+    gameData: { playerWite?: string; playerBlack?: string } | null | undefined
+): "wite" | "black" | null {
+    if (!userName || !gameData) return null;
+    if (gameData.playerWite === userName) return "wite";
+    if (gameData.playerBlack === userName) return "black";
+    return null;
+}
+
+const theme = { THEMES, applyTheme, getCurrentTheme, materialTheme, resolvePlayerColor };
+export default theme;

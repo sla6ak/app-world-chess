@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Состояние приложения управляется через Redux Toolkit с использованием `redux-persist` для сохранения данных между сессиями. Хранилище настроено в `src/redux/store.ts`.
+Состояние приложения управляется через Redux Toolkit с использованием `redux-persist` для сохранения данных между сессиями. Хранилище настраивается в `src/redux/store.ts`.
 
 ## Store
 
@@ -14,15 +14,18 @@ export const store = configureStore({
         getDefaultMiddleware({
             serializableCheck: {
                 ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-                ignoredPaths: ["room.room"],
             },
         }).concat(authApi.middleware),
 });
+
+export const persistor = persistStore(store);
 ```
 
-**Persist config:** `whitelist: ["token", "colorGame", "theme"]` — эти данные сохраняются в `localStorage` и восстанавливаются при перезагрузке.
+**Persist config:** `whitelist: ["token", "wsId"]` — эти данные сохраняются в `localStorage` и восстанавливаются при перезагрузке.
 
-## Слайсы и их состояние
+> **Примечание:** В отличие от предыдущих версий документации, `colorGame` и `theme` **не** входят в whitelist persist. Тема применяется через `applyTheme()` в `App.tsx` при изменении `state.theme`, но сама тема не персистируется автоматически (это можно добавить при необходимости).
+
+## Слайсы
 
 ### `token` — JWT-токен
 
@@ -37,16 +40,31 @@ export const store = configureStore({
 
 ---
 
-### `userName` — Имя пользователя
+### `user` — Пользователь и статистика
 
-| Поле | Тип | Начальное значение |
-|------|-----|-------------------|
-| `userName` | `string` | `""` |
+```ts
+interface UserState {
+    userName: string;
+    stats: UserStats;
+}
+
+interface UserStats {
+    rating: number;       // Текущий рейтинг (по умолчанию 800)
+    gamesPlayed: number;  // Сыгранные игры
+    wins: number;         // Победы
+    losses: number;       // Поражения
+    draws: number;        // Ничьи
+    maxRating: number;    // Максимальный рейтинг
+}
+```
 
 **Действия:**
-- `isUserName(name)` — устанавливает имя пользователя
+- `setUserName(name)` — устанавливает имя пользователя
+- `setUserStats(stats)` — устанавливает статистику (рейтинг, победы и т.д.)
+- `resetUserStats()` — сбрасывает статистику к начальным значениям
+- `resetUser()` — сбрасывает имя и статистику
 
-**Источник:** устанавливается после успешного ответа `isActivToken` (проверка токена)
+**Источник:** устанавливается после успешного ответа `isActivToken` или `loginUser`/`registrationUser`
 
 ---
 
@@ -57,7 +75,7 @@ export const store = configureStore({
 | `colorGame` | `"wite" \| "black"` | `"wite"` (по умолчанию) |
 
 **Действия:**
-- `setColor(color)` — устанавливает выбранную сторону
+- `newColorGame(color)` — устанавливает выбранную сторону
 
 **Источник:** устанавливается при выборе стороны в интерфейсе
 
@@ -72,36 +90,106 @@ export const store = configureStore({
 **Действия:**
 - `setTheme(themeName)` — устанавливает тему (CSS-класс)
 
-**Источник:** устанавливается через `ThemeSwitcher` или восстанавливается из persist
+**Источник:** устанавливается через `ThemeSwitcher` или восстанавливается при инициализации
 
 ---
 
 ### `room` — Состояние Colyseus комнаты
 
-| Поле | Тип | Начальное значение |
-|------|-----|-------------------|
-| `roomId` | `string \| null` | `null` |
-| `connected` | `boolean` | `false` |
-| `connecting` | `boolean` | `false` |
-| `error` | `string \| null` | `null` |
+```ts
+interface RoomState {
+    roomId: string | null;
+    connected: boolean;
+    connecting: boolean;
+    error: string | null;
+    gameStarted: boolean;
+    gameData: {
+        idGame: string;
+        position: string[];
+        playerWite: string;
+        playerBlack: string;
+        reitingWite: number;
+        reitingBlack: number;
+        timeWite: number;
+        timeBlack: number;
+        move: boolean;
+        message: string;
+        typeGame: string;
+        timeControl: number;
+        timePluse: number;
+    } | null;
+}
+```
 
 **Действия:**
-- `connectRoomStart()` — начало подключения
-- `connectRoomSuccess({ roomId })` — успешное подключение
-- `connectRoomFailure(error)` — ошибка подключения
-- `disconnectRoom()` — отключение от комнаты
-- `setRoomError(error)` — установка ошибки
+| Действие | Описание |
+|----------|----------|
+| `connectRoomStart()` | Начало подключения |
+| `connectRoomSuccess({ roomId })` | Успешное подключение |
+| `connectRoomFailure(error)` | Ошибка подключения |
+| `disconnectRoom()` | Полное отключение от комнаты |
+| `setRoomError(error)` | Установка ошибки |
+| `gameStartSuccess(data)` | Начало игры с данными |
+| `gameReset()` | Сброс игровых данных |
 
 ---
 
-### `WsID` — WebSocket ID
+### `gameEvents` — Состояние поиска и игровых событий
+
+```ts
+type GameStatus = "idle" | "searching" | "playing" | "gameover";
+
+interface SearchGameData {
+    typeGame: "standart" | "fisher";
+    timeControl: number;   // секунды
+    timePluse: number;     // секунды за ход
+}
+
+interface GameOverData {
+    result: "win" | "loss" | "draw";
+    ratingChange: number;
+}
+
+interface GameEventsState {
+    status: GameStatus;
+    searchData: SearchGameData | null;
+    gameOverData: GameOverData | null;
+    searchGameId: string | null;
+}
+```
+
+**Действия:**
+| Действие | Описание |
+|----------|----------|
+| `setSearchMode({ typeGame, timeControl, timePluse })` | Устанавливает статус `"searching"` и данные поиска |
+| `setSearchGameId(gameId)` | Сохраняет ID созданной игры для отмены |
+| `setGameStart()` | Устанавливает статус `"playing"` |
+| `setGameOver({ result, ratingChange })` | Устанавливает статус `"gameover"` |
+| `resetGameEvents()` | Сбрасывает всё в начальное состояние |
+
+> `searchGameId` сохраняется после `createSearchRoom` и передаётся при отмене поиска (`cancelSearch`), чтобы бекенд мог найти и удалить именно эту игру.
+
+---
+
+### `wsID` — WebSocket ID
 
 | Поле | Тип | Начальное значение |
 |------|-----|-------------------|
-| `WsID` | `string` | `""` |
+| `wsId` | `string` | `""` |
 
 **Действия:**
-- `setWsID(id)` — устанавливает WebSocket ID клиента
+- `newWsID(id)` — устанавливает WebSocket ID клиента
+
+---
+
+### `colorGame` — Выбранная сторона
+
+| Поле | Тип | Начальное значение |
+|------|-----|-------------------|
+| `colorGame` | `"wite" \| "black"` | `"wite"` |
+
+**Действия:**
+- `newColorGame(color)` — устанавливает выбранную сторону
 
 ---
 
@@ -110,13 +198,18 @@ export const store = configureStore({
 Автоматически сгенерированный слайс для управления REST API запросами авторизации.
 
 **Endpoints:**
-| Endpoint | Тип | Кештеги |
-|----------|-----|---------|
-| `isActivToken` | query | `["user"]` |
-| `registrationUser` | mutation | `["user"]` |
-| `loginUser` | mutation | `["user"]` |
-| `emailVerify` | mutation | `["user"]` |
-| `unLoginUser` | mutation | `["user"]` |
+
+| Endpoint | Тип | URL | Кештеги |
+|----------|-----|-----|---------|
+| `isActivToken` | query | `/auth/current` | `["user"]` |
+| `registrationUser` | mutation | `/auth/signup` | `["user"]` |
+| `loginUser` | mutation | `/auth/login` | `["user"]` |
+| `emailVerify` | mutation | `/auth/login/:token` | `["user"]` |
+| `unLoginUser` | mutation | `/auth/logout` | `["user"]` |
+| `createSearchRoom` | mutation | `/game/find` | `["user"]` |
+| `cancelSearchRoom` | mutation | `/game/cancel` | `["user"]` |
+
+`cancelSearchRoom` — удаляет созданную, но не начатую игру (`statusGame: "open"`, `result: "pending"`) по `gameId`.
 
 ## Типы состояния
 
@@ -134,7 +227,6 @@ export const useAppDispatch = () => useDispatch<AppDispatch>();
 | Ключ persist | Данные | Назначение |
 |-------------|--------|------------|
 | `token` | JWT-токен | Авторизация без повторного входа |
-| `colorGame` | `"wite" \| "black"` | Запоминание выбранной стороны |
-| `theme` | CSS-класс темы | Сохранение выбранной темы |
+| `wsId` | WebSocket ID | Идентификация клиента при переподключении |
 
-При перезагрузке страницы `redux-persist` восстанавливает эти данные из `localStorage`, и приложение остаётся авторизованным с сохранённой темой и стороной.
+При перезагрузке страницы `redux-persist` восстанавливает эти данные, `useIsActivTokenQuery` проверяет токен и восстанавливает имя пользователя и статистику.

@@ -278,3 +278,50 @@
   border-color: var(--color-accent);
   box-shadow: 0 0 0 2px var(--color-accent-subtle);
 }
+
+/* ═══════════════════════════════════════════
+   react-toastify — bring toasts into theme
+   ═══════════════════════════════════════════ */
+:root,
+.theme-light,
+.theme-dark,
+.theme-chess-classic,
+.theme-ocean {
+  --toastify-color-light: var(--color-bg-secondary);
+  --toastify-color-dark: #12122b;
+  --toastify-color-info: var(--color-accent);
+  --toastify-color-success: var(--color-green);
+  --toastify-color-warning: #f59e0b;
+  --toastify-color-error: var(--color-error);
+
+  --toastify-text-color-light: var(--color-text-primary);
+  --toastify-text-color-dark: #e0e0e0;
+
+  --toastify-toast-background: var(--color-bg-secondary);
+  --toastify-toast-box-shadow: var(--shadow-modal);
+  --toastify-toast-border-radius: var(--radius-lg);
+
+  --toastify-color-progress-light: var(--color-accent);
+  --toastify-color-progress-dark: var(--color-accent);
+  --toastify-color-progress-info: var(--color-accent);
+  --toastify-color-progress-success: var(--color-green);
+  --toastify-color-progress-error: var(--color-error);
+
+  --toastify-icon-color-info: var(--color-accent);
+  --toastify-icon-color-success: var(--color-green);
+  --toastify-icon-color-warning: #f59e0b;
+  --toastify-icon-color-error: var(--color-error);
+}
+
+/* Force toast body to follow theme text color */
+.Toastify__toast {
+  color: var(--color-text-primary) !important;
+  background-color: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border);
+}
+.Toastify__toast .Toastify__toast-body {
+  color: var(--color-text-primary) !important;
+}
+.Toastify__close-button {
+  color: var(--color-text-secondary) !important;
+}

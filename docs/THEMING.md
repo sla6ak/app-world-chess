@@ -29,9 +29,21 @@ import { applyTheme } from "@helpers/theme";
 applyTheme("theme-dark");
 ```
 
+В `App.tsx` тема применяется автоматически при изменении:
+
+```tsx
+const currentTheme: string = useSelector((state: RootState) => (state as any).theme);
+
+useEffect(() => {
+    applyTheme(currentTheme);
+}, [currentTheme]);
+```
+
 ## CSS-переменные
 
-Все цвета тем определены в `src/styles/themes.css` как CSS custom properties:
+Все цвета тем определены в `src/styles/themes.css` как CSS custom properties. Каждая тема — блок с переопределением переменных.
+
+### Общие переменные (все темы)
 
 | Переменная | Описание |
 |------------|----------|
@@ -41,34 +53,63 @@ applyTheme("theme-dark");
 | `--color-text-primary` | Основной цвет текста |
 | `--color-text-secondary` | Приглушённый/вспомогательный текст |
 | `--color-text-muted` | Мутный текст (метки, placeholder) |
+| `--color-text-on-accent` | Цвет текста на акцентном фоне |
 | `--color-accent` | Основной акцентный цвет бренда |
 | `--color-accent-hover` | Состояние hover для акцента |
 | `--color-accent-subtle` | Приглушённый акцент (фон) |
 | `--color-accent-border` | Граница акцента |
 | `--color-bg-board` | Светлая клетка шахматной доски |
 | `--color-bg-board-dark` | Тёмная клетка шахматной доски |
+| `--color-bg-board-pc` | Доска на ПК (тёмный оттенок) |
+| `--color-bg-board-mobile` | Доска на мобильных |
 | `--color-green` | Успех/зелёный акцент |
 | `--color-error` | Цвет ошибки |
 | `--color-border` | Цвет границ |
 | `--color-shadow` | Тень по умолчанию |
+| `--radius-sm/md/lg/xl` | Скругления |
+| `--shadow-card/glow/modal` | Тени |
+| `--font-sans/poppins/mono` | Шрифты |
+| `--transition-fast/normal/slow` | Переходы |
+
+### Специфичные переменные
+
+Каждая тема имеет дополнительные переменные:
+- `--color-bg-accent`, `--color-bg-input`, `--color-bg-hover`
+- `--color-text-link`
+- `--color-scrollbar-track/thumb`
+- `--color-icon-default/muted`
 
 ## Tailwind CSS интеграция
 
-Конфигурация Tailwind (`tailwind.config.js`) маппит свои цветовые токены на CSS-переменные. Это означает, что все Tailwind утилиты автоматически реагируют на смену темы:
+Конфигурация Tailwind (`tailwind.config.js`) маппит свои цветовые токены на CSS-переменные:
 
 ```js
-// tailwind.config.js
 colors: {
   board: {
     light: 'var(--color-bg-board)',
     dark: 'var(--color-bg-board-dark)',
+    bg: 'var(--color-bg-accent)',
+    // ...
   },
   accent: 'var(--color-accent)',
   // ...
 }
 ```
 
-Также настроен `darkMode: 'class'` для поддержки Tailwind dark mode через CSS-переменные.
+Настроен `darkMode: 'class'` для поддержки Tailwind dark mode через CSS-переменные.
+
+### Кастомные анимации Tailwind
+
+```js
+animation: {
+  'fade-in': 'fadeIn 0.3s ease-in-out',
+  'slide-in': 'slideIn 0.3s ease-out',
+  'scale-in': 'scaleIn 0.2s ease-out',
+  'check-flash': 'checkFlash 1s ease-in-out infinite',
+  'last-move-glow': 'lastMoveGlow 2s ease-in-out infinite',
+  // ...
+}
+```
 
 ## Добавление новой темы
 
@@ -79,10 +120,8 @@ colors: {
 
 ## Переключение тем
 
-Текущая тема хранится в Redux (`state.theme`) и персистируется через `redux-persist`. При изменении темы вызывается `applyTheme()` в `App.tsx`:
+Текущая тема хранится в Redux (`state.theme`). При изменении темы вызывается `applyTheme()` в `App.tsx`.
 
-```tsx
-useEffect(() => {
-    applyTheme(currentTheme);
-}, [currentTheme]);
-```
+### ThemeSwitcher компонент
+
+`src/components/themeSwitcher/ThemeSwitcher.tsx` — переключатель тем с визуальными индикаторами для каждой из 4 тем.

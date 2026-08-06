@@ -1,113 +1,38 @@
-# app-world-chess
+# Frontend Documentation — app-world-chess
 
-Клиентская часть шахматной платформы **Chess World** — React-приложение с real-time мультиплеером через WebSocket (Colyseus).
+> Chess World — клиентская часть многопользовательской шахматной платформы.
+> React SPA с real-time мультиплеером через WebSocket (Colyseus).
 
-## Технологический стек
+## Содержание
 
-- **React 18** — UI-библиотека
-- **TypeScript** — типизация
-- **Redux Toolkit + RTK Query** — управление состоянием и API-запросы
-- **React Router v6** — маршрутизация
-- **Colyseus.js `0.16.x`** — WebSocket-клиент для мультиплеерных игр
-- **Tailwind CSS v3** — утилитарный CSS-фреймворк
-- **Formik + Yup** — формы и валидация
-- **React Toastify** — уведомления
-- **Redux Persist** — персистенция состояния (token, theme, color)
-- **react-app-rewired** — обёртка над Create React App с кастомной конфигурацией
+| Документ | Описание |
+|----------|----------|
+| [README.md](./README.md) | Этот файл — оглавление и быстрый старт |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Архитектура приложения, слои, принципы |
+| [ROUTING.md](./ROUTING.md) | Маршруты, защита маршрутов, навигация |
+| [STATE.md](./STATE.md) | Redux Toolkit: слайсы, store, persist, RTK Query |
+| [COMPONENTS.md](./COMPONENTS.md) | Компоненты: структура, назначение, принципы |
+| [FEATURES.md](./FEATURES.md) | Функциональные области: auth, game, home |
+| [THEMING.md](./THEMING.md) | Система тем, CSS-переменные, Tailwind |
+| [WEBSOCKET.md](./WEBSOCKET.md) | WebSocket-протокол, Colyseus, события |
+| [API.md](./API.md) | REST API (RTK Query), эндпоинты |
+| [HELPERS.md](./HELPERS.md) | Утилиты и хелперы |
 
-### Ключевые зависимости
-
-| Пакет | Версия | Назначение |
-|-------|--------|------------|
-| `react` | `^18.3.1` | UI-библиотека |
-| `@reduxjs/toolkit` | `^2.12.0` | State management + RTK Query |
-| `colyseus.js` | `^0.16.22` | WebSocket-клиент Colyseus |
-| `tailwindcss` | `^3.4.19` | CSS-фреймворк |
-| `formik` | `^2.4.9` | Управление формами |
-| `yup` | `^1.7.1` | Схемы валидации |
-| `react-router-dom` | `^6.30.4` | Маршрутизация |
-| `react-toastify` | `^11.0.5` | Систем уведомлений |
-| `redux-persist` | `^6.0.0` | Персистенция Redux-состояния |
-
-## Структура проекта
-
-```
-app-world-chess/
-├── public/
-│   ├── index.html            # HTML-шаблон
-│   ├── manifest.json         # PWA манифест
-│   └── ...                   # статические ассеты
-├── src/
-│   ├── components/           # Переиспользуемые компоненты
-│   │   ├── app/App.tsx       # Корневой компонент с роутингом
-│   │   ├── layout/Layout.tsx # Основной layout с sidebar
-│   │   ├── gameBoard/        # Игровая доска
-│   │   ├── gameMenu/         # Меню новой игры
-│   │   ├── homeTab/          # Вкладка домашней страницы
-│   │   ├── loginForm/        # Форма входа
-│   │   ├── registerForm/     # Форма регистрации
-│   │   ├── sidebar/Sidebar.tsx # Боковая навигация
-│   │   ├── statistics/       # Страница статистики
-│   │   ├── themeSwitcher/    # Переключатель тем
-│   │   ├── userMenu/         # Меню пользователя
-│   │   ├── modal/            # Общий модальный компонент
-│   │   ├── modalFindGame/    # Модальное окно поиска игры
-│   │   ├── modalLogOut/      # Модальное окно выхода
-│   │   ├── privateRoute/     # Защищённый маршрут
-│   │   ├── publicRoute/      # Публичный маршрут
-│   │   ├── loader/           # Компонент загрузки
-│   │   └── ...
-│   ├── helpers/
-│   │   ├── theme.ts          # Утилиты тем (applyTheme, THEMES)
-│   │   ├── validationForm.ts # Схемы валидации Yup
-│   │   ├── requestWs.ts      # Фабрики WebSocket-сообщений
-│   │   ├── showFigure.ts     # Отображение шахматных фигур
-│   │   └── ...
-│   ├── layouts/
-│   │   └── Layout.tsx        # Layout с Sidebar + Outlet
-│   ├── redux/
-│   │   ├── store.ts          # Конфигурация Redux store
-│   │   ├── authAPI.ts        # RTK Query API для авторизации
-│   │   ├── roomThunks.ts     # Async thunks для Colyseus комнат
-│   │   ├── sliceToken.ts     # Слайс JWT-токена
-│   │   ├── sliceUserName.ts  # Слайс имени пользователя
-│   │   ├── sliceColor.ts     # Слайс выбранной стороны
-│   │   ├── sliceTheme.ts     # Слайс текущей темы
-│   │   ├── sliceRoom.ts      # Слайс состояния комнаты
-│   │   ├── sliceWsID.ts      # Слайс WebSocket ID
-│   │   └── testURL.ts        # Базовые URL (dev/prod)
-│   ├── colyseus/
-│   │   ├── client.ts         # Colyseus клиент (подключение)
-│   │   └── roomManager.ts    # Менеджер текущей комнаты
-│   ├── styles/
-│   │   └── themes.css        # CSS-переменные тем
-│   ├── index.tsx             # Точка входа
-│   └── index.css             # Глобальные стили + Tailwind
-├── docs/
-│   ├── README.md             # Этот файл
-│   ├── ARCHITECTURE.md       # Архитектура фронтенда
-│   ├── COMPONENTS.md         # Компоненты
-│   ├── PAGES.md              # Страницы и маршруты
-│   ├── THEMING.md            # Система тем
-│   ├── WEBSOCKET.md          # WebSocket-протокол (клиент)
-│   └── STATE.md              # Redux-состояние
-├── package.json
-├── tailwind.config.js
-├── tsconfig.json
-└── .env
-```
+---
 
 ## Быстрый старт
 
 ```bash
+cd app-world-chess
+
 # Установка зависимостей
 npm install
 
 # Копирование шаблона окружения
 cp .env.template .env
-# Отредактировать .env: BASE_URL, socketUrl
+# Отредактировать .env: REACT_APP_BASE_URL, REACT_APP_SOCKET_URL
 
-# Разработка (с hot reload + lint)
+# Разработка (hot reload + lint watch)
 npm run dev
 
 # Сборка для продакшн
@@ -118,10 +43,80 @@ npm run lint:js
 npm run lint:fix
 ```
 
+## Технологический стек
+
+| Технология | Версия | Назначение |
+|------------|--------|------------|
+| React | `^18.3.1` | UI-библиотека |
+| TypeScript | `^5.9.3` | Типизация |
+| Redux Toolkit | `^2.12.0` | State management + RTK Query |
+| React Router v6 | `^6.30.4` | Маршрутизация |
+| Colyseus.js | `^0.16.22` | WebSocket-клиент |
+| Tailwind CSS v3 | `^3.4.19` | CSS-фреймворк |
+| Formik + Yup | `^2.4.9` / `^1.7.1` | Формы и валидация |
+| React Toastify | `^11.0.5` | Система уведомлений |
+| Redux Persist | `^6.0.0` | Персистенция состояния |
+| react-app-rewired | `^2.2.1` | Обёртка над CRA |
+
+## Структура проекта
+
+```
+app-world-chess/
+├── public/
+│   ├── index.html            # HTML-шаблон
+│   ├── manifest.json         # PWA манифест
+│   └── ...                     # статические ассеты
+├── src/
+│   ├── app/
+│   │   ├── App.tsx           # Корневой компонент: роутинг, WS-подписки, провайдеры
+│   │   └── index.ts          # Точка входа приложения
+│   ├── components/           # Переиспользуемые UI-компоненты
+│   │   ├── generalButton/    # Универсальная кнопка
+│   │   ├── loader/           # Индикатор загрузки
+│   │   ├── modal/            # Универсальный модальный компонент
+│   │   ├── privateRoute/     # Обёртка защищённых маршрутов
+│   │   ├── publicRoute/      # Обёртка публичных маршрутов
+│   │   ├── sidebar/          # Боковая навигация + мобильный header
+│   │   ├── themeSwitcher/    # Переключатель тем
+│   │   ├── titleApp/         # Заголовок приложения
+│   │   └── userMenu/         # Меню пользователя
+│   ├── config/               # Конфигурация (URL, тестовые данные)
+│   ├── features/             # Функциональные области (pages + logic)
+│   │   ├── auth/             # Формы авторизации (LoginForm, RegisterForm, ModalLogOut)
+│   │   ├── game/             # Игровые компоненты (GameBoard, GameMenu, HelperBoard, ModalFindGame)
+│   │   └── home/             # Домашняя страница (HomeTab, Statistics, BackgroundPage)
+│   ├── helpers/              # Утилиты (showFigure, theme, validationForm)
+│   ├── layouts/
+│   │   └── Layout.tsx        # Основной layout: sidebar + outlet
+│   ├── pages/                # Страницы (lazy-loaded)
+│   │   ├── dashboardPage/    # Dashboard (редирект на /home или /game)
+│   │   ├── loginPage/        # Страница входа
+│   │   └── registerPage/     # Страница регистрации
+│   ├── redux/
+│   │   ├── api/              # RTK Query API (authApi)
+│   │   ├── slices/           # Redux слайсы (token, user, colorGame, theme, room, gameEvents, wsID)
+│   │   ├── store.ts          # Конфигурация store + persist
+│   │   ├── thunks/           # Async thunks (roomThunks)
+│   │   └── index.ts          # Экспорт слайсов
+│   ├── services/             # Сервисы (Colyseus client, roomManager, wsMessages)
+│   ├── styles/
+│   │   └── themes.css        # CSS-переменные всех тем
+│   ├── index.tsx             # Точка входа (ReactDOM.render)
+│   └── index.css             # Глобальные стили + Tailwind directives
+├── docs/                     # Эта документация
+├── package.json
+├── tailwind.config.js
+├── tsconfig.json
+└── .env
+```
+
 ## Архитектурные принципы
 
-- **Авторитарный клиент** — клиент отправляет ходы, сервер валидирует и рассылает обновления всем участникам
+- **Авторитарный клиент** — клиент отправляет ходы, сервер валидирует и рассылает обновления
 - **Colyseus Rooms** — каждая партия изолирована в отдельной комнате
-- **Redux Persist** — токен, тема и цвет игрока сохраняются между сессиями
-- **CSS-переменные для тем** — все цвета определены через CSS custom properties, переключение тем — замена класса на `<html>`
-- **RTK Query** — все REST-запросы инкапсулированы в `authApi`, с автоматическим управлением кешем и тегами
+- **Redux Persist** — token, wsId сохраняются между сессиями
+- **CSS-переменные для тем** — все цвета определены через custom properties, переключение — замена класса на `<html>`
+- **RTK Query** — все REST-запросы инкапсулированы в `authApi`
+- **Feature-based организация** — код группирован по функциональности (`features/auth`, `features/game`, `features/home`)
+- **Lazy loading** — страницы загружаются лениво через `React.lazy()`
+- **Alias-пути** — импорт через `@components/`, `@features/`, `@layouts/`, `@pages/`, `@redux/`, `@helpers/`, `@services/`, `@config/`

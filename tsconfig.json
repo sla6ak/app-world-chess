@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -26,27 +22,17 @@
     "baseUrl": ".",
     "ignoreDeprecations": "6.0",
     "paths": {
-      "@components/*": [
-        "src/components/*"
-      ],
-      "@helpers/*": [
-        "src/helpers/*"
-      ],
-      "@layouts/*": [
-        "src/layouts/*"
-      ],
-      "@redux/*": [
-        "src/redux/*"
-      ],
-      "@views/*": [
-        "src/views/*"
-      ]
+      "@components/*": ["src/components/*"],
+      "@helpers/*": ["src/helpers/*"],
+      "@redux/*": ["src/redux/*"],
+      "@services/*": ["src/services/*"],
+      "@pages/*": ["src/pages/*"],
+      "@features/*": ["src/features/*"],
+      "@config/*": ["src/config/*"],
+      "@images/*": ["src/images/*"],
+      "@hooks/*": ["src/hooks/*"]
     },
-    "types": [
-      "tailwindcss"
-    ]
+    "types": ["tailwindcss"]
   },
-  "include": [
-    "src"
-  ]
+  "include": ["src"]
 }

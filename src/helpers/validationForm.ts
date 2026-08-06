@@ -1,4 +1,4 @@
-import { object, string } from "yup";
+import { object, ref, string } from "yup";
 
 export const loginSchema = object().shape({
     email: string().email("Invalid email").required("Email must by required"),
@@ -20,6 +20,10 @@ export const registerSchema = object().shape({
     dublePassword: string()
         .min(6, "Password must be longer than 6 letters!")
         .max(18, "Password must be shorts than 18 letters!")
+        .oneOf([ref("password")], "Passwords do not match")
         .required("Password must by required"),
     email: string().email("Invalid email").required("Email must by required"),
 });
+
+const validationForm = { loginSchema, registerSchema };
+export default validationForm;
