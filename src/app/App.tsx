@@ -29,6 +29,8 @@ import Statistics from '@features/home/Statistics';
 import TopPlayers from '@features/leaderboard/TopPlayers';
 import HomeTab from '@features/home/HomeTab';
 import GameArea from '@features/game/GameArea';
+import GameOverModal from '@features/game/GameOverModal';
+import Modal from '@components/modal/Modal';
 import type { RootState, AppDispatch } from '@redux/store';
 
 const LoginPage = React.lazy(() => import('@pages/loginPage/LoginPage'));
@@ -48,6 +50,13 @@ function AppContent() {
   const { data: auth } = useIsActivTokenQuery('', { skip: !token });
   const roomRef = useRef<any>(null);
   const reconnectingRef = useRef(false);
+  // Yз-текущего статуса завершения партии (dispatched от WS game_over).
+  const gameStatus: string = useSelector((state: RootState) => (state as any).gameEvents.status);
+  // Закрытие модалки результата партии: очищаем Redux-события и редиректим на /home.
+  const closeGameOver = () => {
+    dispatch(resetGameEvents());
+    navigate('/home');
+  };
 
   useEffect(() => {
     if (auth === undefined || !auth.user) {
@@ -339,10 +348,28 @@ function AppContent() {
             ratingChange: god.ratingChange,
           })
         );
+
+        // Сразу обновляем статистику в Redux, чтобы UI сам считался актуальным
+        // без ожидания повторного запроса /auth/current (который есть в луговицте
+        // кэша Redis между запросами). ratingChange — это дельта от сервера.
+        const cur = (store.getState() as RootState).user.stats;
+        const finalRating = Math.max(0, Number(cur.rating) + Number(god.ratingChange || 0));
+        dispatch(
+          setUserStats({
+            rating: finalRating,
+            maxRating: Math.max(cur.maxRating, finalRating),
+            gamesPlayed: cur.gamesPlayed + 1,
+            wins: cur.wins + (personal === 'win' ? 1 : 0),
+            losses: cur.losses + (personal === 'loss' ? 1 : 0),
+            draws: cur.draws + (personal === 'draw' ? 1 : 0),
+          })
+        );
       }
       setCurentG(false);
-      console.log('[WS] Navigating to /home (game over)');
-      navigate('/home');
+      // Не вызываем navigate('/home') здесь — оставляем пользователя на /game,
+      // где модальное окно покажет результат. Сам редирект — по закрытии модалки
+      // (GameOverModal.close → resetGameEvents + navigate('/home')).
+      console.log('[WS] Game over — user stays on /game until modal is closed');
     };
 
     const handleDrawOffered = (message: unknown) => {
@@ -491,39 +518,47 @@ function AppContent() {
   }, [roomId, dispatch, navigate, token, color, userName]);
 
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <PrivateRoute>
-            <Layout />
-          </PrivateRoute>
-        }
-      >
-        <Route index element={<DashboardPage curentG={curentG} />} />
-        <Route path="/home" element={<HomeTab />} />
-        <Route path="/statistic" element={<Statistics />} />
-        <Route path="/leaderboard" element={<TopPlayers />} />
-        <Route path="/game" element={<GameArea />} />
-      </Route>
-      <Route
-        path="/register"
-        element={
-          <PublicRoute>
-            <RegisterPage />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+    <>
+      {gameStatus === 'gameover' && (
+        <Modal onModalClose={closeGameOver}>
+          <GameOverModal onClose={closeGameOver} />
+        </Modal>
+      )}
+
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <PrivateRoute>
+              <Layout />
+            </PrivateRoute>
+          }
+        >
+          <Route index element={<DashboardPage curentG={curentG} />} />
+          <Route path="/home" element={<HomeTab />} />
+          <Route path="/statistic" element={<Statistics />} />
+          <Route path="/leaderboard" element={<TopPlayers />} />
+          <Route path="/game" element={<GameArea />} />
+        </Route>
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <RegisterPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </>
   );
 }
 
