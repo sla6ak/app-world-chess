@@ -2,44 +2,46 @@
    Page Wrapper — 100vw × 100dvh, centered, no scroll
    ═══════════════════════════════════════════ */
 .pageWrapper {
-    --page-pad: clamp(4px, 1vmin, 12px);
-    --bar-h: clamp(1.6rem, 4.5vmin, 2.75rem); /* approx. PlayerInfo height */
-    --stack-gap: clamp(2px, 0.6vmin, 8px);
-    --gh-mobile-h: 2.75rem;
-    --gh-desktop-offset: calc(1rem + 3.6rem); /* page-pad + drop-header height → header never covers the top player bar */
+  --page-pad: clamp(4px, 1vmin, 12px);
+  --bar-h: clamp(1.6rem, 4.5vmin, 2.75rem); /* approx. PlayerInfo height */
+  --stack-gap: clamp(2px, 0.6vmin, 8px);
+  --gh-mobile-h: 2.75rem;
+  --gh-desktop-offset: calc(
+    1rem + 3.6rem
+  ); /* page-pad + drop-header height → header never covers the top player bar */
 
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    max-width: 100vw;
-    max-height: 100dvh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    box-sizing: border-box;
-    padding: var(--page-pad);
-    padding-top: calc(var(--page-pad) + var(--gh-mobile-h) + env(safe-area-inset-top, 0px));
-    background-color: var(--color-bg-primary, #1a1a2e);
-    animation: fadeIn 0.3s ease-out;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: var(--page-pad);
+  padding-top: calc(var(--page-pad) + var(--gh-mobile-h) + env(safe-area-inset-top, 0px));
+  background-color: var(--color-bg-primary, #1a1a2e);
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* Desktop: offset from the top so the dropping header doesn't cover the top player bar */
 @media (min-width: 768px) {
-    .pageWrapper {
-        padding-top: calc(var(--page-pad) + var(--gh-desktop-offset));
-    }
+  .pageWrapper {
+    padding-top: calc(var(--page-pad) + var(--gh-desktop-offset));
+  }
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.98);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -51,393 +53,390 @@
    + gaps + page padding ≤ 100dvh
    ═══════════════════════════════════════════ */
 .gameContainer {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: center;
-    gap: var(--stack-gap);
-    flex-shrink: 1;
-    min-height: 0;
-    min-width: 0;
-    max-height: 100%;
-    box-sizing: border-box;
-    width: min(
-        100%,
-        calc(
-            100dvh
-            - var(--page-pad)
-            - var(--pad-top, var(--page-pad))
-            - 2 * var(--bar-h)
-            - 2 * var(--stack-gap)
-        )
-    );
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: var(--stack-gap);
+  flex-shrink: 1;
+  min-height: 0;
+  min-width: 0;
+  max-height: 100%;
+  box-sizing: border-box;
+  width: min(
+    100%,
+    calc(
+      100dvh - var(--page-pad) - var(--pad-top, var(--page-pad)) - 2 * var(--bar-h) - 2 *
+        var(--stack-gap)
+    )
+  );
 }
 
 /* Desktop: reserve space for the top clearance */
 @media (min-width: 768px) {
-    .gameContainer {
-        --pad-top: calc(var(--page-pad) + var(--gh-desktop-offset));
-    }
+  .gameContainer {
+    --pad-top: calc(var(--page-pad) + var(--gh-desktop-offset));
+  }
 }
 
 /* Mobile: account for the permanent top header in the height budget */
 @media (max-width: 767px) {
-    .gameContainer {
-        --pad-top: calc(var(--page-pad) + var(--gh-mobile-h) + env(safe-area-inset-top, 0px));
-    }
+  .gameContainer {
+    --pad-top: calc(var(--page-pad) + var(--gh-mobile-h) + env(safe-area-inset-top, 0px));
+  }
 }
 
 /* ═══════════════════════════════════════════
    Board Wrap — middle row of the stack
    ═══════════════════════════════════════════ */
 .boardWrap {
-    flex: 0 1 auto;
-    min-height: 0;
-    min-width: 0;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
+  flex: 0 1 auto;
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 
 /* ── Flip board button ── */
 .flipBtn {
-    position: absolute;
-    top: clamp(2px, 0.5vmin, 4px);
-    right: clamp(2px, 0.5vmin, 4px);
-    z-index: 10;
-    width: clamp(24px, 3vmin, 32px);
-    height: clamp(24px, 3vmin, 32px);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border);
-    background-color: var(--color-bg-secondary);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(0.75rem, 1.5vmin, 1rem);
-    line-height: 1;
-    transition: all var(--transition-fast);
-    opacity: 0.6;
+  position: absolute;
+  top: clamp(2px, 0.5vmin, 4px);
+  right: clamp(2px, 0.5vmin, 4px);
+  z-index: 10;
+  width: clamp(24px, 3vmin, 32px);
+  height: clamp(24px, 3vmin, 32px);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.75rem, 1.5vmin, 1rem);
+  line-height: 1;
+  transition: all var(--transition-fast);
+  opacity: 0.6;
 }
 
 .flipBtn:hover {
-    opacity: 1;
-    background-color: var(--color-bg-hover);
-    color: var(--color-text-primary);
-    border-color: var(--color-accent);
+  opacity: 1;
+  background-color: var(--color-bg-hover);
+  color: var(--color-text-primary);
+  border-color: var(--color-accent);
 }
 
 .flipBtn:active {
-    transform: scale(0.92);
+  transform: scale(0.92);
 }
 
 /* ═══════════════════════════════════════════
    Board Wrapper — strict square, 3×3 frame grid
    ═══════════════════════════════════════════ */
 .boardWrapper {
-    /* Strict square; shrink through aspect-ratio if height limits */
-    width: 100%;
-    max-width: 100%;
-    max-height: 100%;
-    aspect-ratio: 1 / 1;
-    margin: 0 auto;
-    box-sizing: border-box;
+  /* Strict square; shrink through aspect-ratio if height limits */
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  box-sizing: border-box;
 
-    /* 3×3 grid: labels around the 8×8 board */
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto 1fr auto;
-    gap: clamp(1px, 0.3vmin, 3px);
-    padding: clamp(2px, 0.5vmin, 6px);
+  /* 3×3 grid: labels around the 8×8 board */
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  gap: clamp(1px, 0.3vmin, 3px);
+  padding: clamp(2px, 0.5vmin, 6px);
 
-    background-color: var(--color-bg-secondary);
-    border: clamp(1px, 0.3vmin, 2px) solid var(--color-border);
-    border-radius: var(--radius-board, 6px);
-    box-shadow:
-        0 4px 16px var(--color-shadow),
-        0 0 0 1px var(--color-border);
-    overflow: hidden;
+  background-color: var(--color-bg-secondary);
+  border: clamp(1px, 0.3vmin, 2px) solid var(--color-border);
+  border-radius: var(--radius-board, 6px);
+  box-shadow:
+    0 4px 16px var(--color-shadow),
+    0 0 0 1px var(--color-border);
+  overflow: hidden;
 }
 
 /* ── The 8×8 grid (center cell of the frame) ── */
 .grid {
-    grid-column: 2;
-    grid-row: 2;
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(8, 1fr);
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    overflow: hidden;
-    border-radius: 2px;
+  grid-column: 2;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  grid-template-rows: repeat(8, 1fr);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 2px;
 }
 
 /* ── Coordinate label rows / columns ── */
 .topLabels {
-    grid-column: 2;
-    grid-row: 1;
-    display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
 }
 
 .fileLabels {
-    grid-column: 2;
-    grid-row: 3;
-    display: flex;
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
 }
 
 .rankLabels {
-    grid-column: 1;
-    grid-row: 2;
-    display: flex;
-    flex-direction: column;
+  grid-column: 1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
 }
 
 .rightLabels {
-    grid-column: 3;
-    grid-row: 2;
-    display: flex;
-    flex-direction: column;
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
 }
 
 .topLabel,
 .fileLabel,
 .rankLabel,
 .rightLabel {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(0.5rem, 1.4vmin, 0.85rem);
-    font-family: var(--font-mono);
-    font-weight: 600;
-    color: var(--color-text-muted);
-    user-select: none;
-    pointer-events: none;
-    min-width: 0;
-    min-height: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.5rem, 1.4vmin, 0.85rem);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  user-select: none;
+  pointer-events: none;
+  min-width: 0;
+  min-height: 0;
 }
 
 /* ═══════════════════════════════════════════
    Cells
    ═══════════════════════════════════════════ */
 .cell {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    transition:
-        background-color var(--transition-fast),
-        box-shadow var(--transition-fast);
-    overflow: hidden;
-    min-width: 0;
-    min-height: 0;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition:
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
 }
 
 .cell.light {
-    background-color: var(--color-bg-board);
+  background-color: var(--color-bg-board);
 }
 
 .cell.dark {
-    background-color: var(--color-bg-board-dark);
+  background-color: var(--color-bg-board-dark);
 }
 
 /* ── Hover ── */
 .cell.hovered {
-    box-shadow: inset 0 0 0 2px var(--color-accent);
+  box-shadow: inset 0 0 0 2px var(--color-accent);
 }
 
 /* ── Selected piece ── */
 .cell.selected {
-    box-shadow: inset 0 0 0 3px var(--color-accent);
-    z-index: 1;
+  box-shadow: inset 0 0 0 3px var(--color-accent);
+  z-index: 1;
 }
 
 .cell.selected.light {
-    background-color: color-mix(in srgb, var(--color-bg-board) 80%, var(--color-accent));
+  background-color: color-mix(in srgb, var(--color-bg-board) 80%, var(--color-accent));
 }
 
 .cell.selected.dark {
-    background-color: color-mix(in srgb, var(--color-bg-board-dark) 80%, var(--color-accent));
+  background-color: color-mix(in srgb, var(--color-bg-board-dark) 80%, var(--color-accent));
 }
 
 /* ── Last move highlight ── */
 .cell.lastMove.light {
-    background-color: color-mix(in srgb, var(--color-bg-board) 85%, var(--color-green));
+  background-color: color-mix(in srgb, var(--color-bg-board) 85%, var(--color-green));
 }
 
 .cell.lastMove.dark {
-    background-color: color-mix(in srgb, var(--color-bg-board-dark) 85%, var(--color-green));
+  background-color: color-mix(in srgb, var(--color-bg-board-dark) 85%, var(--color-green));
 }
 
 /* ── Valid move indicator (dot) ── */
 .cell.validMove::after {
-    content: "";
-    position: absolute;
-    width: 28%;
-    height: 28%;
-    border-radius: 50%;
-    background-color: var(--color-accent);
-    opacity: 0.5;
-    pointer-events: none;
-    animation: dotPulse 1.5s ease-in-out infinite;
+  content: '';
+  position: absolute;
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: dotPulse 1.5s ease-in-out infinite;
 }
 
 .cell.validMove.dark::after {
-    background-color: var(--color-bg-board);
-    opacity: 0.4;
+  background-color: var(--color-bg-board);
+  opacity: 0.4;
 }
 
 @keyframes dotPulse {
-    0%,
-    100% {
-        transform: scale(1);
-        opacity: 0.5;
-    }
-    50% {
-        transform: scale(1.2);
-        opacity: 0.7;
-    }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
 }
 
 /* ── Move-dot span (rendered explicitly in JSX) ── */
 .moveDot {
-    position: absolute;
-    width: 28%;
-    height: 28%;
-    border-radius: 50%;
-    background-color: var(--color-accent);
-    opacity: 0.5;
-    pointer-events: none;
-    animation: dotPulse 1.5s ease-in-out infinite;
+  position: absolute;
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: dotPulse 1.5s ease-in-out infinite;
 }
 
 /* ── Check indicator (red glow on king) ── */
 .cell.check {
-    animation: checkPulse 1s ease-in-out infinite;
+  animation: checkPulse 1s ease-in-out infinite;
 }
 
 .cell.check.light {
-    background-color: color-mix(in srgb, var(--color-bg-board) 70%, #ff0000);
+  background-color: color-mix(in srgb, var(--color-bg-board) 70%, #ff0000);
 }
 
 .cell.check.dark {
-    background-color: color-mix(in srgb, var(--color-bg-board-dark) 70%, #ff0000);
+  background-color: color-mix(in srgb, var(--color-bg-board-dark) 70%, #ff0000);
 }
 
 @keyframes checkPulse {
-    0%,
-    100% {
-        box-shadow: inset 0 0 0 3px rgba(255, 0, 0, 0.6);
-    }
-    50% {
-        box-shadow: inset 0 0 0 3px rgba(255, 0, 0, 0.2);
-    }
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 3px rgba(255, 0, 0, 0.6);
+  }
+  50% {
+    box-shadow: inset 0 0 0 3px rgba(255, 0, 0, 0.2);
+  }
 }
 
 /* ═══════════════════════════════════════════
    Pieces
    ═══════════════════════════════════════════ */
 .piece {
-    width: 82%;
-    height: 82%;
-    object-fit: contain;
-    pointer-events: none;
-    user-select: none;
-    transition:
-        transform var(--transition-fast),
-        filter var(--transition-fast);
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-    z-index: 1;
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  transition:
+    transform var(--transition-fast),
+    filter var(--transition-fast);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  z-index: 1;
 }
 
 .cell:hover .piece {
-    transform: scale(1.08);
+  transform: scale(1.08);
 }
 
 .piece.pieceSelected {
-    transform: scale(1.1);
-    filter: drop-shadow(0 0 8px var(--color-accent-glow, rgba(102, 53, 23, 0.5)));
+  transform: scale(1.1);
+  filter: drop-shadow(0 0 8px var(--color-accent-glow, rgba(102, 53, 23, 0.5)));
 }
 
 .piece.pieceHovered {
-    transform: scale(1.05);
-    filter: brightness(1.1);
+  transform: scale(1.05);
+  filter: brightness(1.1);
 }
 
 /* ── Move animation ── */
 .cell.animating {
-    animation: squarePop 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: squarePop 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes squarePop {
-    0% {
-        transform: scale(0.95);
-    }
-    50% {
-        transform: scale(1.02);
-    }
-    100% {
-        transform: scale(1);
-    }
+  0% {
+    transform: scale(0.95);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* ═══════════════════════════════════════════
    Responsive
    ═══════════════════════════════════════════ */
 @media (max-width: 480px) {
-    .pageWrapper {
-        --page-pad: 4px;
-        --bar-h: 1.6rem;
-        --stack-gap: 2px;
-    }
+  .pageWrapper {
+    --page-pad: 4px;
+    --bar-h: 1.6rem;
+    --stack-gap: 2px;
+  }
 
-    .topLabel,
-    .fileLabel,
-    .rankLabel,
-    .rightLabel {
-        font-size: clamp(0.4rem, 2.2vmin, 0.6rem);
-    }
+  .topLabel,
+  .fileLabel,
+  .rankLabel,
+  .rightLabel {
+    font-size: clamp(0.4rem, 2.2vmin, 0.6rem);
+  }
 
-    .cell.validMove::after,
-    .moveDot {
-        width: 22%;
-        height: 22%;
-    }
+  .cell.validMove::after,
+  .moveDot {
+    width: 22%;
+    height: 22%;
+  }
 
-    .flipBtn {
-        width: 28px;
-        height: 28px;
-        font-size: 0.85rem;
-    }
+  .flipBtn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
 }
 
 /* ── Landscape phones / very short viewports ── */
 @media (max-height: 500px) {
-    .pageWrapper {
-        --bar-h: 1.4rem;
-        --stack-gap: 2px;
-    }
+  .pageWrapper {
+    --bar-h: 1.4rem;
+    --stack-gap: 2px;
+  }
 }
 
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
-    .pageWrapper,
-    .cell,
-    .piece {
-        animation: none;
-        transition: none;
-    }
+  .pageWrapper,
+  .cell,
+  .piece {
+    animation: none;
+    transition: none;
+  }
 
-    .cell.validMove::after,
-    .moveDot,
-    .cell.check,
-    .cell.animating {
-        animation: none;
-    }
+  .cell.validMove::after,
+  .moveDot,
+  .cell.check,
+  .cell.animating {
+    animation: none;
+  }
 }

@@ -2,6 +2,11 @@
   display: flex;
   flex-direction: column;
   background-color: var(--color-bg-primary);
+  /* Контейнер растягивает родителя; HomeTab.root тоже height:100%,
+     поэтому реальная высота ограничена viewport минус любые внешние offsets. */
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .warningBanner {
@@ -9,8 +14,8 @@
   align-items: center;
   gap: 0.5rem;
   max-width: 72rem;
-  margin: 0.75rem auto;
-  padding: 0.625rem 1rem;
+  margin: 0.5rem auto;
+  padding: 0.5rem 1rem;
   border-radius: 0.75rem;
   background-color: var(--color-error-bg);
   color: var(--color-error);
@@ -29,12 +34,12 @@
   margin-left: auto;
   margin-right: auto;
   width: 100%;
-  padding: 1.5rem 1rem 0.5rem;
+  padding: 1rem 1rem 0.5rem;
 }
 
 @media (min-width: 768px) {
   .header {
-    padding: 2rem 2rem 0.5rem;
+    padding: 1.25rem 2rem 0.5rem;
   }
 }
 
@@ -63,26 +68,27 @@
   margin-left: auto;
   margin-right: auto;
   width: 100%;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (min-width: 768px) {
   .body {
-    padding: 2rem;
+    padding: 1rem 2rem 1.5rem;
   }
 }
 
+/* Грид 3×3, всегда вмещается в экран по высоте.
+   Карточки центрируются в ячейках; квадратность обеспечивает сама .card. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
   gap: 0.75rem;
-  height: 100%;
-}
-
-@media (min-width: 640px) {
-  .grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+  flex: 1;
+  min-height: 0;
+  place-items: center;
 }
 
 .card {
@@ -91,18 +97,28 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
+  /* Квадрат на ЛЮБОМ экране: берём минимум из ширины колонки и 28% меньшей
+     стороны вьюпорта (vmin). На ПК ограничит высота viewport, на мобилке —
+     ширина колонки (~1/3 экрана). aspect-ratio фиксирует квадрат. */
+  width: min(100%, 28vmin);
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
   border-radius: 0.75rem;
   font-weight: 600;
   transition: all 200ms ease;
   overflow: hidden;
   cursor: pointer;
   border: none;
+  background: var(--color-bg-secondary);
+  box-shadow: var(--shadow-card);
+  color: var(--color-text-primary);
 }
 
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-glow), 0 6px 20px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    var(--shadow-glow),
+    0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
 .card:active {
@@ -146,29 +162,28 @@
   opacity: 1;
 }
 
-.cardIcon {
+.cardValue {
+  /* Основная надпись: 3+2, 5, 10+5. Размер масштабируется вместе с картой:
+     на мобилке (~390px) ~1.3rem, на десктопе (1080px) ~3rem. */
   position: relative;
-  font-size: 2rem;
+  font-size: clamp(1.25rem, 6vmin, 3rem);
   font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.02em;
+  font-family: 'Poppins', 'Inter', sans-serif;
 }
 
-.cardSub {
+.cardUnit {
   position: relative;
-  font-size: 0.625rem;
-  margin-top: 0.125rem;
-  opacity: 0.8;
-}
-
-.cardLabel {
-  position: relative;
-  font-size: 0.5625rem;
+  font-size: clamp(0.6rem, 1.6vmin, 0.8rem);
   margin-top: 0.25rem;
   opacity: 0.6;
-  transition: opacity 200ms ease;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 500;
 }
 
-.card:hover .cardLabel {
+.card:hover .cardUnit {
   opacity: 1;
 }
 
@@ -182,7 +197,9 @@
   cursor: pointer;
   transition: all 200ms ease;
   border: 1px solid var(--color-accent-border);
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.15);
   color: var(--color-accent);
   background-color: var(--color-accent-subtle);
 }
