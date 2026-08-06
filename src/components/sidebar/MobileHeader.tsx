@@ -4,6 +4,7 @@ import GridViewIcon from '@mui/icons-material/GridView';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import Logo from '@components/logo/Logo';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -117,6 +118,15 @@ const MobileHeader = () => {
               >
                 <BarChartIcon className={s.icon} />
                 Statistics
+              </NavLink>
+              <NavLink
+                to="/leaderboard"
+                onClick={() => setMenuOpen(false)}
+                className={({ isActive }) => `${s.panelLink} ${isActive ? s.panelLinkActive : ''}`}
+                style={({ isActive }) => (isActive ? {} : { color: 'var(--color-text-secondary)' })}
+              >
+                <EmojiEventsIcon className={s.icon} />
+                Leaderboard
               </NavLink>
 
               {/* Current game */}

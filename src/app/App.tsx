@@ -26,6 +26,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import PrivateRoute from '@components/privateRoute/PrivateRoute';
 import PublicRoute from '@components/publicRoute/PublicRoute';
 import Statistics from '@features/home/Statistics';
+import TopPlayers from '@features/leaderboard/TopPlayers';
 import HomeTab from '@features/home/HomeTab';
 import GameArea from '@features/game/GameArea';
 import type { RootState, AppDispatch } from '@redux/store';
@@ -501,6 +502,7 @@ function AppContent() {
         <Route index element={<DashboardPage curentG={curentG} />} />
         <Route path="/home" element={<HomeTab />} />
         <Route path="/statistic" element={<Statistics />} />
+        <Route path="/leaderboard" element={<TopPlayers />} />
         <Route path="/game" element={<GameArea />} />
       </Route>
       <Route

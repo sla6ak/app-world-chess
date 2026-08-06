@@ -3,6 +3,7 @@ import { useState } from 'react';
 import useCurrentGameNavigation from '@hooks/useCurrentGameNavigation';
 import GridViewIcon from '@mui/icons-material/GridView';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
 import UserMenu from '@components/userMenu/UserMenu';
@@ -48,6 +49,13 @@ const Sidebar = () => {
         >
           <BarChartIcon className={s.icon} />
           Statistics
+        </NavLink>
+        <NavLink
+          to="/leaderboard"
+          className={({ isActive }) => `${s.link} ${isActive ? s.linkActive : ''}`}
+        >
+          <EmojiEventsIcon className={s.icon} />
+          Leaderboard
         </NavLink>
 
         {/* Current game — показать только если на сервере есть неоконченная партия */}

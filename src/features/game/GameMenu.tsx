@@ -20,6 +20,7 @@ const GameMenu: React.FC<PropTypes> = () => {
   const color = useSelector((state: RootState) => (state as any).colorGame);
   const token = useSelector((state: RootState) => (state as any).token);
   const searchGameId = useSelector((state: RootState) => (state as any).gameEvents.searchGameId);
+  const searchData = useSelector((state: RootState) => (state as any).gameEvents.searchData);
   const roomGameStarted = useSelector((state: RootState) => (state as any).room.gameStarted);
   const dispatch = useAppDispatch();
   const [typeGame, setTypeGame] = useState<'standart' | 'fisher'>('standart');
@@ -34,10 +35,10 @@ const GameMenu: React.FC<PropTypes> = () => {
 
   // minutes — значение на кнопке (UI); в сеть уходит timeControlSec = minutes*60, timePluse уже в секундах.
   const handleStartSearch = async (minutes: number, timePluse: number) => {
-    if (isSearching && searchGameId) {
-      await dispatch(cancelSearch(searchGameId)).unwrap();
-      dispatch(resetGameEvents());
-    }
+    // Анти-double-click: если поиск уже идёт — обновляем UI без повторного POST /game/find.
+    // Иначе сервер создаст вторую комнату, а клиент восстановит старую — и создаст
+    // ощущение «игра 1v1 vs против самого себя».
+    if (isSearching) return;
 
     const timeControl = minutes * 60;
 
@@ -176,7 +177,7 @@ const GameMenu: React.FC<PropTypes> = () => {
 
       {isSearching && (
         <Modal onModalClose={handleCancelSearch}>
-          <ModalFindGame onCancel={handleCancelSearch} />
+          <ModalFindGame onCancel={handleCancelSearch} searchData={searchData} />
         </Modal>
       )}
     </div>
